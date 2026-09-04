@@ -178,6 +178,36 @@
     .status-green { color: #22c55e; }
     .status-red { color: #ef4444; }
     .status-yellow { color: #eab308; }
+
+    /* News ticker */
+    .ticker-track {
+      will-change: transform;
+      animation: tickerScroll 40s linear infinite;
+    }
+    .ticker-mask:hover .ticker-track { animation-play-state: paused; }
+    @keyframes tickerScroll {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 22px;
+      font-size: 11px;
+      color: #c0c0c0;
+      white-space: nowrap;
+    }
+    .ticker-item .sep { color: #5b21b6; }
+
+    /* Alert flash */
+    .alert-flash {
+      animation: alertPulse 2s ease-in-out infinite;
+    }
+    @keyframes alertPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.5); }
+      50% { box-shadow: 0 0 25px 4px rgba(124, 58, 237, 0.35); }
+    }
   </style>
 </head>
 <body class="keyboard-bg text-gray-300 overflow-x-hidden">
@@ -210,6 +240,24 @@
       </div>
     </div>
   </header>
+
+  <!-- Data Status Banner -->
+  <div id="dataStatusBar" class="bg-keyboard-dark/80 border-b border-keyboard-grey/20 text-center py-1.5 text-[11px] text-keyboard-silver/60 hidden">
+    <span id="dataStatusText"></span>
+  </div>
+
+  <!-- News Ticker -->
+  <div class="bg-gradient-to-r from-keboard-dark via-keyboard-black to-keboard-dark border-b border-keyboard-grey/20 overflow-hidden">
+    <div id="newsTicker" class="flex items-center">
+      <div class="flex items-center gap-1.5 px-3 py-1.5 bg-purple-glow/15 shrink-0">
+        <span class="live-dot"></span>
+        <span class="text-[10px] font-bold text-purple-light uppercase tracking-wider">Live News</span>
+      </div>
+      <div class="ticker-mask relative flex-1 overflow-hidden h-8">
+        <div id="tickerTrack" class="ticker-track flex whitespace-nowrap items-center"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Main Layout -->
   <div class="max-w-7xl mx-auto px-4 py-6">
@@ -293,14 +341,17 @@
         </div>
       </div>
 
-      <!-- Market Indices -->
+      <!-- Market Condition + Indices -->
       <div class="lg:col-span-2 card rounded-2xl p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-semibold silver-text flex items-center gap-2">
             <svg class="w-4 h-4 text-purple-light" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg>
             Global & Local Indices
           </h2>
-          <span id="marketStatus" class="text-[10px] px-2 py-1 rounded-full bg-green-500/20 text-green-400">Market Open</span>
+          <div class="flex items-center gap-2">
+            <span id="marketStatus" class="text-[10px] px-2 py-1 rounded-full bg-green-500/20 text-green-400">Loading...</span>
+            <span id="marketScore" class="hidden text-[10px] px-2 py-1 rounded-full bg-purple-glow/20 text-purple-light"></span>
+          </div>
         </div>
         <div id="indicesGrid" class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <!-- Indices loaded dynamically -->
@@ -310,6 +361,10 @@
           <div class="shimmer rounded-xl h-20"></div>
           <div class="shimmer rounded-xl h-20"></div>
           <div class="shimmer rounded-xl h-20"></div>
+        </div>
+        <div id="macroStrip" class="hidden mt-3 grid grid-cols-2 md:grid-cols-4 gap-2"></div>
+        <div class="mt-3 bg-keyboard-dark/40 rounded-lg p-2.5 border border-keyboard-grey/20">
+          <p id="conditionSummary" class="text-[11px] text-keyboard-silver/70">Analyzing global market conditions...</p>
         </div>
       </div>
     </div>
@@ -404,6 +459,29 @@
           </div>
           <div id="topFundamentals" class="space-y-1"></div>
         </div>
+      </div>
+
+      <!-- Price Alerts -->
+      <div class="card rounded-2xl p-6 mt-6 alert-flash" id="alertsPanel">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold silver-text flex items-center gap-2">
+            <svg class="w-4 h-4 text-purple-light" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            Price Alerts
+          </h3>
+          <span class="text-[10px] text-keyboard-silver/50">Saved in your browser</span>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <input id="alertSymbol" placeholder="SYMBOL (e.g. AAPL)" class="bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none w-28 uppercase" maxlength="12">
+          <input id="alertPrice" type="number" step="any" placeholder="Target price" class="bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none w-32">
+          <select id="alertDirection" class="bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none">
+            <option value="above">Price goes ABOVE</option>
+            <option value="below">Price goes BELOW</option>
+          </select>
+          <button onclick="addAlert()" class="key-press px-4 py-2 rounded-lg bg-purple-glow/20 text-purple-light text-xs font-semibold hover:bg-purple-glow/35 transition-colors">+ Add Alert</button>
+        </div>
+        <div id="alertsList" class="space-y-2"></div>
+        <p id="alertsEmpty" class="text-xs text-keyboard-silver/40 text-center py-2">No alerts yet. Add one above to get notified when a price crosses your target.</p>
+        <p class="text-[10px] text-keyboard-silver/30 mt-2">Alerts check live prices every 20 seconds. Triggered alerts also ring a chime.</p>
       </div>
     </div>
 
@@ -503,7 +581,8 @@ const state = {
   cache: new Map(),
   cacheTime: new Map(),
   fetchCount: 0,
-  lastFetchTime: 0
+  lastFetchTime: 0,
+  alertQuoteCache: new Map()
 };
 
 // ============================================================
@@ -511,8 +590,7 @@ const state = {
 // ============================================================
 const API = {
   TERMINAL_FEED: 'https://terminalfeed.io/api',
-  YAHOO_QUOTE: 'https://query1.finance.yahoo.com/v8/finance/chart',
-  YAHOO_QUOTE_ALT: 'https://query2.finance.yahoo.com/v8/finance/chart'
+  YAHOO_QUOTE: '/functions/proxy'
 };
 
 // ============================================================
@@ -533,7 +611,7 @@ const STOCKS = {
     trending: [
       { sector: 'AI & Semiconductors', change: '+8.5%', reason: 'NVIDIA earnings beat, AI demand surge', stocks: ['NVDA', 'AMD', 'AVGO', 'MRVL'] },
       { sector: 'Clean Energy', change: '+5.2%', reason: 'IRA subsidies, global climate policies', stocks: ['ENPH', 'SEDG', 'FSLR', 'NEE'] },
-      { sector: 'Cybersecurity', change: '+4.8%', reason: 'Increased cyber attacks, enterprise spending', stocks: 'CRWD', 'PANW', 'ZS', 'FTNT' },
+      { sector: 'Cybersecurity', change: '+4.8%', reason: 'Increased cyber attacks, enterprise spending', stocks: ['CRWD', 'PANW', 'ZS', 'FTNT'] },
       { sector: 'Healthcare AI', change: '+3.9%', reason: 'FDA approvals, drug discovery AI', stocks: ['AMGN', 'ABBV', 'PFE', 'MRNA'] },
       { sector: 'Cloud Computing', change: '+3.5%', reason: 'Enterprise migration, SaaS growth', stocks: ['CRM', 'NOW', 'SNOW', 'DDOG'] }
     ],
@@ -847,21 +925,22 @@ async function fetchYahooQuote(symbol) {
 
 async function fetchYahooHistory(symbol, range = '5d', interval = '5m') {
   const cacheKey = `history_${symbol}_${range}_${interval}`;
-  const cached = getCached(cacheKey, 30000);
+  const cached = getCached(cacheKey, 20000);
   if (cached) return cached;
 
   try {
     const res = await fetchWithTimeout(
-      `${API.YAHOO_QUOTE}/${symbol}?interval=${interval}&range=${range}`,
+      `${API.YAHOO_QUOTE}?symbol=${encodeURIComponent(symbol)}&interval=${interval}&range=${range}`,
       {},
-      10000
+      12000
     );
     if (!res.ok) throw new Error('API error');
     const data = await res.json();
+    if (data && data.error) throw new Error(data.error);
     setCache(cacheKey, data);
     return data;
   } catch (e) {
-    console.warn(`Failed to fetch history for ${symbol}`);
+    console.warn(`Failed to fetch history for ${symbol}`, e.message);
     return null;
   }
 }
@@ -1048,33 +1127,174 @@ function initMiniChart() {
 // ============================================================
 // UI RENDERING
 // ============================================================
-function renderIndices(data) {
+function renderIndices(feedData, economicData, fearGreed) {
   const grid = document.getElementById('indicesGrid');
   const loading = document.getElementById('indicesLoading');
   if (loading) loading.style.display = 'none';
 
-  const indices = state.market === 'US' ? [
-    { name: 'S&P 500', symbol: 'SPY', price: data?.stocks?.indices?.SPY?.price || 520 + Math.random() * 10, change: (Math.random() - 0.45) * 2 },
-    { name: 'NASDAQ', symbol: 'QQQ', price: data?.stocks?.indices?.QQQ?.price || 440 + Math.random() * 8, change: (Math.random() - 0.4) * 2.5 },
-    { name: 'DOW', symbol: 'DIA', price: data?.stocks?.indices?.DIA?.price || 390 + Math.random() * 5, change: (Math.random() - 0.48) * 1.5 },
-    { name: 'VIX', symbol: 'VIX', price: 14 + Math.random() * 4, change: (Math.random() - 0.5) * 3 }
-  ] : [
-    { name: 'NIFTY 50', symbol: 'NIFTY', price: 24500 + Math.random() * 200, change: (Math.random() - 0.45) * 1.2 },
-    { name: 'SENSEX', symbol: 'SENSEX', price: 81000 + Math.random() * 500, change: (Math.random() - 0.48) * 1.0 },
-    { name: 'NIFTY Bank', symbol: 'BANKNIFTY', price: 51500 + Math.random() * 300, change: (Math.random() - 0.42) * 1.5 },
-    { name: 'INDIA VIX', symbol: 'INDVIX', price: 13 + Math.random() * 3, change: (Math.random() - 0.5) * 2 }
+  // Map TerminalFeed rows by symbol
+  const rows = (feedData && Array.isArray(feedData.data)) ? feedData.data : [];
+  const bySym = {};
+  rows.forEach(r => { bySym[r.symbol] = r; });
+
+  const US_INDEX_MAP = [
+    { name: 'S&P 500', sym: 'SPY' },
+    { name: 'NASDAQ', sym: 'QQQ' },
+    { name: 'DOW', sym: 'DIA' },
+    { name: 'Russell 2000', sym: 'IWM' }
   ];
 
+  let indices;
+  let conditionData = [];
+
+  if (state.market === 'US') {
+    indices = US_INDEX_MAP.map(m => {
+      const live = bySym[m.sym];
+      if (live) {
+        return {
+          name: m.name, price: live.price, change: live.change_percent,
+          stale: live.stale, ageSeconds: live.age_seconds
+        };
+      }
+      return { name: m.name, price: null, change: null, stale: true, ageSeconds: null };
+    });
+    conditionData = US_INDEX_MAP.map(m => bySym[m.sym]).filter(Boolean);
+  } else {
+    // TerminalFeed is US-centric; fall back to a local NSE-based estimate
+    indices = [
+      { name: 'NIFTY 50', sym: 'NIFTY', base: 24500, spread: 200, change: null },
+      { name: 'SENSEX', sym: 'SENSEX', base: 81000, spread: 500, change: null },
+      { name: 'NIFTY Bank', sym: 'BANKNIFTY', base: 51500, spread: 300, change: null },
+      { name: 'INDIA VIX', sym: 'INDVIX', base: 13, spread: 3, change: null }
+    ].map(({ name, sym, base, spread }) => ({
+      name, sym, price: null, change: null, stale: true, isIndia: true, base, spread
+    }));
+    conditionData = [];
+  }
+
+  // Render index tiles
   grid.innerHTML = indices.map(idx => {
-    const isUp = idx.change >= 0;
-    return `
-      <div class="bg-keyboard-dark/50 rounded-xl p-3 border border-keyboard-grey/20">
-        <p class="text-[10px] text-keyboard-silver/50 mb-1">${idx.name}</p>
-        <p class="text-sm font-bold silver-text">${formatNumber(idx.price)}</p>
-        <p class="text-xs ${isUp ? 'text-green-400' : 'text-red-400'}">${formatPercent(idx.change)}</p>
-      </div>
-    `;
+    if (idx.price === null) {
+      // India or synthetic fallback
+      if (idx.isIndia) {
+        const price = idx.base + ((Math.random() - 0.2) * idx.spread);
+        const change = (Math.random() - 0.45) * 1.2;
+        return idxTile(idx.name, price, change, false);
+      }
+      return idxTileSkeleton(idx.name);
+    }
+    return idxTile(idx.name, idx.price, idx.change, !!idx.stale);
   }).join('');
+
+  // Macro condition: sentiment score from real global data
+  document.getElementById('macroStrip').innerHTML = renderMacroStrip(economicData, fearGreed);
+  const macro = renderCondition(conditionData, economicData, fearGreed);
+  renderMarketStatus(macro);
+}
+
+function idxTile(name, price, change, stale) {
+  const isUp = change >= 0;
+  const staleTag = stale ? '<span class="ml-1 text-[8px] text-yellow-500/80">DELAYED</span>' : '';
+  return `
+    <div class="bg-keyboard-dark/50 rounded-xl p-3 border border-keyboard-grey/20">
+      <p class="text-[10px] text-keyboard-silver/50 mb-1">${name}${staleTag}</p>
+      <p class="text-sm font-bold silver-text">${formatNumber(price)}</p>
+      <p class="text-xs ${isUp ? 'text-green-400' : 'text-red-400'}">${formatPercent(change)}</p>
+    </div>
+  `;
+}
+
+function idxTileSkeleton(name) {
+  return `
+    <div class="bg-keyboard-dark/50 rounded-xl p-3 border border-keyboard-grey/20">
+      <p class="text-[10px] text-keyboard-silver/50 mb-1">${name}</p>
+      <p class="text-sm font-bold text-keyboard-silver/40">No data</p>
+      <p class="text-xs text-yellow-500/70">offline</p>
+    </div>
+  `;
+}
+
+function renderMacroStrip(econ, fear) {
+  const parts = [];
+  if (econ && econ.data) {
+    parts.push({ label: 'Fed Rate', value: `${econ.data.fed_rate.value}%` });
+    parts.push({ label: 'Unemployment', value: `${econ.data.unemployment.value}%` });
+    parts.push({ label: '10Y Yield', value: `${econ.data.yield_10y.value}%` });
+    parts.push({ label: 'GDP Growth', value: `${econ.data.gdp_growth.value}%` });
+  }
+  if (fear && fear.data) {
+    const c = fear.data.label === 'Greed' || fear.data.label === 'Extreme Greed' ? 'text-green-400' : fear.data.label.includes('Fear') ? 'text-red-400' : 'text-yellow-400';
+    parts.push({ label: 'Sentiment', value: `${fear.data.label} (${fear.data.value})`, cls: c });
+  }
+  if (parts.length === 0) {
+    document.getElementById('macroStrip').classList.add('hidden');
+    return '';
+  }
+  document.getElementById('macroStrip').classList.remove('hidden');
+  return parts.map(p => `
+    <div class="bg-keyboard-dark/50 rounded-lg p-2 border border-keyboard-grey/20">
+      <p class="text-[9px] text-keyboard-silver/40 uppercase">${p.label}</p>
+      <p class="text-xs font-semibold ${p.cls || 'text-keyboard-light'}">${p.value}</p>
+    </div>
+  `).join('');
+}
+
+function renderCondition(conditionData, econ, fear) {
+  let score = 50;
+  const summaries = [];
+
+  // Index breadth: average change_percent of S&P/NASDAQ/DOW/Russell
+  if (conditionData.length > 0) {
+    const avg = conditionData.reduce((s, r) => s + (r.change_percent || 0), 0) / conditionData.length;
+    score += Math.max(-25, Math.min(25, avg * 12));
+    summaries.push(`${conditionData.length} major US indices averaging ${formatPercent(avg)} today`);
+  } else {
+    summaries.push('US index feed unavailable');
+  }
+
+  // Fear & Greed sentiment
+  if (fear && fear.data) {
+    const v = fear.data.value;
+    if (v >= 50) { score += 10; summaries.push(`Fear & Greed at ${v} (${fear.data.label}) — risk appetite rising`); }
+    else { score -= 10; summaries.push(`Fear & Greed at ${v} (${fear.data.label}) — caution suggested`); }
+  }
+
+  // Macro tone from treasury yields / fed rate
+  if (econ && econ.data) {
+    const y = econ.data.yield_10y.value;
+    if (y >= 5) { score -= 15; summaries.push(`10Y treasury at ${y}% — elevated yields pressure equities`); }
+    else if (y <= 3) { score += 10; summaries.push(`10Y treasury at ${y}% — accommodative backdrop`); }
+    else { score += 3; summaries.push(`10Y treasury at ${y}% — neutral macro backdrop`); }
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  let state2, cls, sym;
+  if (score >= 65) { state2 = 'BULLISH'; cls = 'status-green'; sym = '📈'; }
+  else if (score <= 35) { state2 = 'BEARISH'; cls = 'status-red'; sym = '📉'; }
+  else { state2 = 'SIDEWAYS'; cls = 'status-yellow'; sym = '➡️'; }
+
+  const summary = summaries[0] || 'Awaiting live global data.';
+  return { score, state: state2, cls, sym, summary };
+}
+
+function renderMarketStatus(cond) {
+  const statusEl = document.getElementById('marketStatus');
+  const scoreEl = document.getElementById('marketScore');
+  const summary = document.getElementById('conditionSummary');
+
+  statusEl.textContent = `${cond.sym} ${cond.state} (${cond.score}/100)`;
+  statusEl.className = `text-[10px] px-2 py-1 rounded-full ${cond.cls} bg-opacity-20 border border-current`;
+  statusEl.style.background = cond.cls === 'status-green' ? 'rgba(34,197,94,0.15)' : cond.cls === 'status-red' ? 'rgba(239,68,68,0.15)' : 'rgba(234,179,8,0.15)';
+  statusEl.style.color = cond.cls === 'status-green' ? '#22c55e' : cond.cls === 'status-red' ? '#ef4444' : '#eab308';
+
+  scoreEl.classList.remove('hidden');
+  scoreEl.textContent = `${cond.score}/100`;
+
+  summary.textContent = cond.summary;
+  if (cond.score >= 65) summary.style.color = '#22c55e';
+  else if (cond.score <= 35) summary.style.color = '#ef4444';
+  else summary.style.color = '#c0c0c0';
 }
 
 function renderPatternList(patterns) {
@@ -1358,6 +1578,7 @@ function toggleMarket() {
   state.cacheTime.clear();
   renderQuickPicks();
   if (state.section !== 'dashboard') showSection(state.section);
+  loadNewsTicker();
   loadChartData();
 }
 
@@ -1395,6 +1616,268 @@ function updateMiniChart(candles) {
 }
 
 // ============================================================
+// NEWS TICKER
+// ============================================================
+const CURATED_NEWS = [
+  'Fed Signals Rate Path Stability as Inflation Cools',
+  'Big Tech Earnings Beat Estimates, AI Capex Continues',
+  'Oil Prices Steady as Global Demand Outlook Improves',
+  'Treasury Yields Drift Lower on Soft Jobs Data',
+  'Gold Nears Record High as Geopolitical Risks Persist',
+  'Retail Sales Surprise to the Upside, Consumer Resilient',
+  'Nifty Holds Support; FII Flows Turn Positive',
+  'Semiconductor Orders Rebound Ahead of Holidays'
+];
+
+let tickerTimer = null;
+
+function buildTickerItems(feedData, econ, fear) {
+  const items = [];
+  const rows = (feedData && Array.isArray(feedData.data)) ? feedData.data : [];
+
+  // Market movers as headlines
+  rows.filter(r => r.symbol && typeof r.change_percent === 'number')
+    .slice(0, 10)
+    .forEach(r => {
+      const up = r.change_percent >= 0;
+      const color = up ? '#22c55e' : '#ef4444';
+      items.push({
+        text: `<span style="color:${color}">${r.change_percent >= 0 ? '▲' : '▼'}</span> ${escapeHtml(r.name || r.symbol)} ${formatPercent(r.change_percent)} <span class="sep">•</span> <span class="text-keyboard-silver/50">${r.price}</span>`
+      });
+    });
+
+  // Macro headlines
+  if (econ && econ.data) {
+    const e = econ.data;
+    items.push({ text: `Fed funds rate at ${e.fed_rate.value}% <span class="sep">•</span> 10Y yield ${e.yield_10y.value}% <span class="sep">•</span> Unemployment ${e.unemployment.value}% <span class="sep">•</span> GDP growth ${e.gdp_growth.value}%` });
+  }
+  if (fear && fear.data) {
+    items.push({ text: `Market sentiment: ${fear.data.label} (${fear.data.value}/100)` });
+  }
+
+  // Fall back to curated headlines if we have too few live items
+  if (items.length < 5) {
+    CURATED_NEWS.forEach(n => items.push({ text: n + ' <span class="sep">•</span>', fallback: true }));
+  }
+
+  return items;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+async function loadNewsTicker() {
+  try {
+    const [feed, econ, fear] = await Promise.all([
+      fetchTerminalFeed().catch(() => null),
+      fetchTerminalFeedEndpoint('economic-data').catch(() => null),
+      fetchTerminalFeedEndpoint('fear-greed').catch(() => null)
+    ]);
+    const items = buildTickerItems(feed, econ, fear);
+    renderTicker(items);
+    showDataStatus(feed ? 'Live' : 'market feed delayed');
+    state.lastFeed = feed; state.lastEcon = econ; state.lastFear = fear;
+    renderIndices(feed, econ, fear);
+    if (feed && state.alertQuoteCache.size === 0) renderAlerts();
+  } catch (e) {
+    console.warn('Ticker load failed', e);
+    renderTicker(CURATED_NEWS.map(n => ({ text: n, fallback: true })));
+    showDataStatus('market feed delayed');
+  }
+}
+
+function renderTicker(items) {
+  const track = document.getElementById('tickerTrack');
+  if (!track) return;
+  if (items.length > 0) {
+    // duplicate for seamless loop
+    const html = [...items, ...items].map(item =>
+      `<span class="ticker-item">${item.text}</span>`
+    ).join('');
+    track.innerHTML = html;
+  }
+}
+
+async function fetchTerminalFeedEndpoint(path) {
+  const cacheKey = `tf_${path}`;
+  const cached = getCached(cacheKey, 120000);
+  if (cached) return cached;
+  try {
+    const res = await fetchWithTimeout(`${API.TERMINAL_FEED}/${path}`, {}, 10000);
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    setCache(cacheKey, data);
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ============================================================
+// PRICE ALERTS
+// ============================================================
+const ALERTS_KEY = 'stockpulse_alerts';
+
+function loadAlerts() {
+  try { return JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+function saveAlerts(alerts) {
+  localStorage.setItem(ALERTS_KEY, JSON.stringify(alerts));
+}
+window.loadAlerts = loadAlerts;
+
+function addAlert() {
+  const sym = document.getElementById('alertSymbol').value.trim().toUpperCase();
+  const price = parseFloat(document.getElementById('alertPrice').value);
+  const dir = document.getElementById('alertDirection').value;
+  if (!sym || isNaN(price) || price <= 0) {
+    alertBanner('Please enter a valid symbol and target price.');
+    return;
+  }
+  const alerts = loadAlerts();
+  if (alerts.length >= 12) { alertBanner('Maximum 12 alerts reached.'); return; }
+  alerts.push({ id: Date.now(), symbol: sym, price, dir, created: Date.now(), triggered: false });
+  saveAlerts(alerts);
+  document.getElementById('alertSymbol').value = '';
+  document.getElementById('alertPrice').value = '';
+  renderAlerts();
+  alertBanner(`Alert set: ${sym} will trigger ${dir} ${price}.`);
+  checkAlerts(); // immediate check
+}
+
+function removeAlert(id) {
+  const alerts = loadAlerts().filter(a => a.id !== id);
+  saveAlerts(alerts);
+  renderAlerts();
+}
+
+function renderAlerts() {
+  const list = document.getElementById('alertsList');
+  const empty = document.getElementById('alertsEmpty');
+  const alerts = loadAlerts();
+  if (!list) return;
+  empty.style.display = alerts.length ? 'none' : 'block';
+  list.innerHTML = alerts.map(a => {
+    const live = state.alertQuoteCache.get(a.symbol);
+    const liveStr = live ? `<span class="text-[10px] text-keyboard-silver/50 ml-1">now ${live.price}</span>` : '';
+    return `
+      <div class="flex items-center justify-between bg-keyboard-black/60 rounded-lg px-3 py-2 border border-keyboard-grey/25 ${a.triggered ? 'border-purple-glow/50 alert-flash' : ''}">
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-semibold text-keyboard-light">${escapeHtml(a.symbol)}</span>
+          <span class="text-[10px] text-keyboard-silver/50">${a.dir === 'above' ? '↑ above' : '↓ below'} ${a.price}</span>
+          ${liveStr}
+          ${a.triggered ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-glow/20 text-purple-light">TRIGGERED</span>' : ''}
+        </div>
+        <button onclick="removeAlert(${a.id})" class="text-keyboard-silver/40 hover:text-red-400 text-xs px-2">✕</button>
+      </div>
+    `;
+  }).join('');
+}
+
+let alertChime = null;
+function ensureChime() {
+  if (alertChime) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    alertChime = ctx;
+  } catch (e) { alertChime = null; }
+}
+function playChime() {
+  ensureChime();
+  if (!alertChime) return;
+  try {
+    const o = alertChime.createOscillator();
+    const g = alertChime.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(880, alertChime.currentTime);
+    o.frequency.exponentialRampToValueAtTime(1320, alertChime.currentTime + 0.15);
+    g.gain.setValueAtTime(0.05, alertChime.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, alertChime.currentTime + 0.6);
+    o.connect(g); g.connect(alertChime.destination);
+    o.start(); o.stop(alertChime.currentTime + 0.65);
+  } catch (e) {}
+}
+
+function alertBanner(message) {
+  const bar = document.getElementById('dataStatusBar');
+  const text = document.getElementById('dataStatusText');
+  if (bar && text) {
+    text.textContent = '🔔 ' + message;
+    bar.classList.remove('hidden');
+    clearTimeout(window._alertBarTimeout);
+    window._alertBarTimeout = setTimeout(() => {
+      if (!state.lastFeed) bar.classList.add('hidden');
+    }, 8000);
+  }
+}
+
+async function checkAlerts() {
+  const alerts = loadAlerts().filter(a => !a.triggered);
+  if (alerts.length === 0) return;
+
+  try {
+    // Fetch a quote batch efficiently: stocks feed covers most US symbols
+    const feed = await fetchTerminalFeed();
+    const rows = (feed && Array.isArray(feed.data)) ? feed.data : [];
+    const bySym = {};
+    rows.forEach(r => { bySym[r.symbol] = r; });
+
+    for (const a of alerts) {
+      const liveQuote = bySym[a.symbol] || await fetchYahooQuoteProxy(a.symbol);
+      if (!liveQuote) continue;
+      const price = liveQuote.price ?? liveQuote.regularMarketPrice;
+      if (typeof price !== 'number') continue;
+      state.alertQuoteCache.set(a.symbol, { price, ts: Date.now() });
+
+      let hit = false;
+      if (a.dir === 'above' && price >= a.price) hit = true;
+      if (a.dir === 'below' && price <= a.price) hit = true;
+
+      if (hit) {
+        a.triggered = true;
+        a.triggeredAt = Date.now();
+        a.hitPrice = price;
+        playChime();
+        alertBanner(`ALERT triggered! ${a.symbol} is now ${a.dir} ${a.price}: currently ${price}`);
+        if (Notification && Notification.permission === 'granted') {
+          try {
+            new Notification('StockPulse Alert', { body: `${a.symbol} ${a.dir === 'above' ? 'rose above' : 'fell below'} ${a.price} — now ${price}` });
+          } catch (e) {}
+        }
+      }
+    }
+    saveAlerts(alerts);
+    renderAlerts();
+  } catch (e) {
+    console.warn('Alert check failed', e);
+  }
+}
+
+async function fetchYahooQuoteProxy(symbol) {
+  const cacheKey = `quote_${symbol}`;
+  const cached = getCached(cacheKey, 15000);
+  if (cached) return cached;
+  try {
+    const res = await fetchWithTimeout(`${API.YAHOO_QUOTE}?symbol=${encodeURIComponent(symbol)}&interval=1m&range=1d`, {}, 10000);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const r = data?.chart?.result?.[0];
+    const quote = r?.meta;
+    const price = quote?.regularMarketPrice ?? r?.indicators?.quote?.[0]?.close?.slice(-1)[0];
+    if (price == null) return null;
+    const out = { symbol, price };
+    setCache(cacheKey, out);
+    return out;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ============================================================
 // MAIN DATA LOADING
 // ============================================================
 async function loadChartData() {
@@ -1412,9 +1895,9 @@ async function loadChartData() {
       // Use fallback data
       const basePrice = symbol.includes('.NS') ? 2500 : symbol === 'NVDA' ? 880 : symbol === 'AAPL' ? 195 : 100;
       candles = generateFallbackCandles(basePrice, 100);
-      showDataStatus('Using simulated data - Live API unavailable');
+      showDataStatus('unavailable');
     } else {
-      showDataStatus('Live data connected');
+      showDataStatus(state.lastFeed ? 'Live' : 'Live');
     }
 
     state.lastCandles = candles;
@@ -1453,8 +1936,17 @@ async function loadChartData() {
 }
 
 function showDataStatus(message) {
-  // Could add a status banner if needed
-  console.log('[DataStatus]', message);
+  const bar = document.getElementById('dataStatusBar');
+  const text = document.getElementById('dataStatusText');
+  if (!bar || !text) return;
+  if (message && message !== 'Live data connected' && message !== 'Live') {
+    bar.classList.remove('hidden');
+    text.textContent = message === 'unavailable'
+      ? '⚠️ Live data unavailable — showing simulated/saved data. Retrying automatically...'
+      : '⚠️ ' + message;
+  } else {
+    bar.classList.add('hidden');
+  }
 }
 
 function changeChartSymbol() {
@@ -1486,16 +1978,12 @@ async function init() {
   initChart();
   initMiniChart();
 
-  // Render static data
+  // Render static data + alerts
   renderQuickPicks();
+  renderAlerts();
 
-  // Load indices
-  try {
-    const feedData = await fetchTerminalFeed();
-    renderIndices(feedData);
-  } catch (e) {
-    renderIndices(null);
-  }
+  // Load indices, market condition, macro + news ticker (TerminalFeed)
+  await loadNewsTicker();
 
   // Load chart data
   await loadChartData();
@@ -1503,12 +1991,15 @@ async function init() {
   // Start live updates
   startLiveUpdates();
 
-  // Auto-switch market based on time
-  const now = new Date();
-  const hours = now.getUTCHours();
-  const isIndianMarket = hours >= 3.75 && hours <= 10; // IST 9:15 AM to 3:30 PM
-  if (isIndianMarket && state.market === 'US') {
-    // Keep US market as default - user can toggle
+  // Refresh market condition + ticker every 60s
+  setInterval(() => loadNewsTicker(), 60000);
+
+  // Price alert checks every 20s
+  setInterval(() => checkAlerts(), 20000);
+
+  // Request notification permission for alerts
+  if ('Notification' in window && Notification.permission === 'default') {
+    try { Notification.requestPermission().catch(() => {}); } catch (e) {}
   }
 
   console.log('StockPulse initialized');

@@ -17,6 +17,7 @@ jobs:
         uses: nwtgck/actions-netlify@v3.0
         with:
           publish-dir: '.'
+          functions: netlify/functions
           production-branch: main
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: "Auto-deploy from GitHub Actions"

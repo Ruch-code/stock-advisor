@@ -2,6 +2,10 @@
   publish = "."
   command = "echo 'Static site - no build needed'"
 
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -19,5 +23,11 @@
 [[redirects]]
   from = "/api/*"
   to = "https://terminalfeed.io/api/:splat"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/functions/*"
+  to = "/.netlify/functions/:splat"
   status = 200
   force = false
