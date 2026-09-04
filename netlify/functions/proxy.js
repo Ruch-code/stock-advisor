@@ -113,34 +113,46 @@ async function twelveChart(symbol, interval, range, exchange = null) {
 }
 
 let ySession = { cookie: null, crumb: null, at: 0 };
+let diag = [];
 
 async function yahooCrumb(force = false) {
   if (!force && ySession.crumb && Date.now() - ySession.at < 10 * 60 * 1000) return ySession;
+
   const r1 = await fetch('https://fc.yahoo.com', {
     headers: { 'User-Agent': UA, 'Accept': '*/*' }
   });
   const setCookie = r1.headers.get('set-cookie') || '';
   const cookie = setCookie.split(';')[0].split(',')[0].trim();
+  diag.push(`fc.yahoo.com -> ${r1.status}`);
 
-  const r2 = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
-    headers: { 'User-Agent': UA, 'Cookie': cookie, 'Accept': 'text/plain' }
-  });
-  const crumb = (await r2.text()).trim();
-  if (!crumb || crumb.length > 64) throw new Error('crumb fetch failed');
+  let crumb = '', last = '';
+  for (const host of YAHOO_HOSTS) {
+    const r2 = await fetch(`${host}/v1/test/getcrumb`, {
+      headers: { 'User-Agent': UA, 'Cookie': cookie, 'Accept': 'text/plain' }
+    });
+    last = (await r2.text()).trim();
+    diag.push(`getcrumb ${host} -> ${r2.status}`);
+    if (r2.status === 200 && last && last.length <= 64) { crumb = last; break; }
+  }
+  if (!crumb) throw new Error('crumb fetch failed');
+
   ySession = { cookie, crumb, at: Date.now() };
   return ySession;
 }
 
 async function yahooChart(symbol, interval, range) {
   let s;
-  try { s = await yahooCrumb(); } catch (e) { throw e; }
+  try { s = await yahooCrumb(); } catch (e) { diag.push(`crumb error: ${e.message}`); throw e; }
 
-  const attempts = [];
-  YAHOO_HOSTS.forEach((h) => attempts.push({ host: h, crumb: true }));
-  YAHOO_HOSTS.forEach((h) => attempts.push({ host: h, crumb: false }));
+  // Interleave hosts and crumb usage; retry with growing backoff for transient 429s
+  const combos = [];
+  YAHOO_HOSTS.forEach((h) => combos.push({ host: h, crumb: true }));
+  YAHOO_HOSTS.forEach((h) => combos.push({ host: h, crumb: false }));
+  combos.push(...combos); // second pass after backoff
 
   let lastRes = null;
-  for (const a of attempts) {
+  let waitMs = 800;
+  for (const a of combos) {
     const url = `${a.host}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}` +
       (a.crumb ? `&crumb=${encodeURIComponent(s.crumb)}` : '');
     const res = await fetch(url, {
@@ -152,8 +164,11 @@ async function yahooChart(symbol, interval, range) {
       }
     });
     lastRes = res;
+    diag.push(`chart ${a.host} crumb=${a.crumb} -> ${res.status}`);
     if (res.status === 200) return res;
-    await sleep(600);
+    if (res.status === 401 || res.status === 403) break; // crumb gone stale; re-mint next call
+    await sleep(waitMs);
+    waitMs = Math.min(3000, waitMs * 2);
   }
   return lastRes;
 }
@@ -183,10 +198,15 @@ export default async (event, context) => {
   if (fromCache) return corsResponse(JSON.stringify(fromCache), 200, { 'Cache-Control': 'public, max-age=15' });
 
   let out = null;
+  const wantDebug = params.debug === '1';
+  diag = [];
 
-  // INR / NSE / BSE symbols -> Twelve Data first
+  // INR / NSE / BSE symbols -> Finnhub .NS first, TwelveData (NSE/BSE) second
   if (isIndia(symbol)) {
-    out = await twelveChart(indiaBase(symbol), interval, range, indiaExchange(symbol));
+    if (process.env.FINNHUB_API_KEY) out = await finnhubChart(symbol, interval, range);
+    if (!out && process.env.TWELVEDATA_API_KEY) {
+      out = await twelveChart(indiaBase(symbol), interval, range, indiaExchange(symbol));
+    }
   }
 
   // USD / US symbols -> Finnhub first, Twelve Data as secondary
@@ -211,9 +231,13 @@ export default async (event, context) => {
       return corsResponse(JSON.stringify(data), 200, { 'Cache-Control': 'public, max-age=15' });
     }
     const detail = res ? await res.text().catch(() => '') : '';
-    return corsResponse(JSON.stringify({ error: 'live sources unavailable', detail: detail.slice(0, 200) }), 200, { 'Cache-Control': 'public, max-age=30' });
+    const body = { error: 'live sources unavailable', detail: detail.slice(0, 200) };
+    if (wantDebug) body.diag = diag.slice(-12);
+    return corsResponse(JSON.stringify(body), 200, { 'Cache-Control': 'public, max-age=30' });
   } catch (e) {
-    return corsResponse(JSON.stringify({ error: 'live sources unavailable', detail: e.message }), 200, { 'Cache-Control': 'public, max-age=30' });
+    const body = { error: 'live sources unavailable', detail: e.message };
+    if (wantDebug) body.diag = diag.slice(-12);
+    return corsResponse(JSON.stringify(body), 200, { 'Cache-Control': 'public, max-age=30' });
   }
 };
 

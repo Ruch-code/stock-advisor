@@ -36,9 +36,16 @@ netlify env:set TWELVEDATA_API_KEY <your-twelvedata-token>
 netlify deploy --prod --dir=.
 ```
 
-Provider order: `.NS`/`.BO` symbols use Twelve Data (INR), everything else uses
-Finnhub (USD). Without keys the chart falls back to simulated candles and the app
-shows a clear "Live data unavailable" banner.
+Provider order for the symbol being requested:
+- `.NS` / `.BO` (India) : Finnhub → Twelve Data (NSE/BSE) → Yahoo
+- everything else (US)      : Finnhub → Twelve Data → Yahoo
+
+> Note on India (INR): NSE/BSE candle history is a *paid* tier on all three providers'
+> free plans (Finnhub returns "no access", Twelve Data hides NSE behind Grow/Venture,
+> and Yahoo blocks Netlify's server IPs — fc.yahoo.com 404 / getcrumb 429).
+> With free keys, **US/USD is fully live**; India falls back to simulated candles with a
+> clear "Live data unavailable" banner. Adding a paid Indian-market key later lights it
+> up automatically — no code change needed.
 
 ## Deployment
 
