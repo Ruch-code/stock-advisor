@@ -427,7 +427,13 @@
               <div class="live-dot"></div>
             </div>
           </div>
-          <div id="chartContainer" class="chart-container h-[300px] md:h-[400px]"></div>
+          <div id="chartContainer" class="relative chart-container h-[300px] md:h-[400px]">
+            <div id="chartEmpty" class="hidden absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-6">
+              <p class="text-2xl mb-2">📡</p>
+              <p class="text-sm font-semibold text-keyboard-silver/80 mb-1">No live data available</p>
+              <p class="text-[11px] text-keyboard-silver/50 max-w-xs">Simulated candles are disabled — only real market data is shown. Retrying automatically...</p>
+            </div>
+          </div>
         </div>
 
         <!-- Pattern Detection Panel -->
@@ -1023,30 +1029,6 @@ function calculateRSI(candles, period = 14) {
   return rsiData;
 }
 
-function generateFallbackCandles(basePrice = 100, count = 50) {
-  const candles = [];
-  let price = basePrice;
-  const now = Math.floor(Date.now() / 1000);
-
-  for (let i = count; i > 0; i--) {
-    const change = (Math.random() - 0.48) * basePrice * 0.02;
-    const open = price;
-    price += change;
-    const high = Math.max(open, price) + Math.random() * basePrice * 0.005;
-    const low = Math.min(open, price) - Math.random() * basePrice * 0.005;
-
-    candles.push({
-      time: now - (i * 300),
-      open: open,
-      high: high,
-      low: low,
-      close: price,
-      volume: Math.floor(Math.random() * 1000000) + 100000
-    });
-  }
-  return candles;
-}
-
 // ============================================================
 // CHART INITIALIZATION
 // ============================================================
@@ -1221,7 +1203,7 @@ function renderIndices(feedData, economicData, fearGreed) {
       { name: 'India VIX', sym: 'INDVIX', base: 13, spread: 3 }
     ];
     indices = IN_MAP.map(({ name, sym, base, spread }) => ({
-      name, sym, price: null, change: null, stale: true, isIndia: true, base, spread
+      name, sym, price: null, change: null, stale: true, isIndia: true
     }));
     conditionData = [];
   }
@@ -1229,12 +1211,7 @@ function renderIndices(feedData, economicData, fearGreed) {
   // Render index tiles
   grid.innerHTML = indices.map(idx => {
     if (idx.price === null) {
-      if (idx.isIndia) {
-        const price = idx.base + ((Math.random() - 0.2) * idx.spread);
-        const change = (Math.random() - 0.45) * 1.2;
-        return idxTile(idx.name, idx.sym, price, change, false);
-      }
-      return idxTileSkeleton(idx.name);
+      return idx.isIndia ? idxTileUnavailable(idx.name, idx.sym) : idxTileSkeleton(idx.name);
     }
     return idxTile(idx.name, idx.sym, idx.price, idx.change, !!idx.stale);
   }).join('');
@@ -1268,6 +1245,17 @@ function idxTileSkeleton(name) {
       <p class="text-[10px] text-keyboard-silver/50 mb-1">${name}</p>
       <p class="text-sm font-bold text-keyboard-silver/40">No data</p>
       <p class="text-xs text-yellow-500/70">offline</p>
+    </div>
+  `;
+}
+
+function idxTileUnavailable(name, sym) {
+  const edu = INDEX_EDU[sym];
+  return `
+    <div class="bg-keyboard-dark/50 rounded-xl p-3 border border-red-500/20 cursor-help" title="${edu ? edu.significance : name}">
+      <p class="text-[10px] text-keyboard-silver/50 mb-1">${name}<span class="ml-1 text-[8px] px-1 rounded bg-red-500/15 text-red-400">Local</span></p>
+      <p class="text-sm font-bold text-red-400/70">No live feed</p>
+      <p class="text-[9px] text-red-400/60">Free sources gate NSE/BSE</p>
     </div>
   `;
 }
@@ -1306,8 +1294,10 @@ function renderCondition(conditionData, econ, fear) {
     const avg = conditionData.reduce((s, r) => s + (r.change_percent || 0), 0) / conditionData.length;
     score += Math.max(-25, Math.min(25, avg * 12));
     summaries.push(`${conditionData.length} major US indices averaging ${formatPercent(avg)} today`);
-  } else {
+  } else if (state.market === 'US') {
     summaries.push('US index feed unavailable');
+  } else {
+    summaries.push('No live Indian index feed — only global context shown below');
   }
 
   // Fear & Greed sentiment
@@ -1655,7 +1645,10 @@ function setMiniChart(mode) {
 function updateMiniChart(candles) {
   if (!state.miniBarSeries) return;
   if (!candles) candles = state.lastCandles;
-  if (!candles || candles.length === 0) return;
+  if (!candles || candles.length === 0) {
+    state.miniBarSeries.setData([]);
+    return;
+  }
 
   if (miniChartMode === 'volume') {
     state.miniBarSeries.setData(candles.map(c => ({
@@ -1943,6 +1936,10 @@ async function fetchYahooQuoteProxy(symbol) {
 // ============================================================
 async function loadChartData() {
   const symbol = document.getElementById('chartSymbol').value;
+  const emptyEl = document.getElementById('chartEmpty');
+  const patternList = document.getElementById('patternList');
+
+  if (!emptyEl && !patternList) return;
 
   try {
     const data = await fetchYahooHistory(symbol, '5d', '5m');
@@ -1952,47 +1949,51 @@ async function loadChartData() {
       candles = processYahooToCandles(data);
     }
 
-    if (!candles || candles.length === 0) {
-      // Use fallback data
-      const basePrice = symbol.includes('.NS') ? 2500 : symbol === 'NVDA' ? 880 : symbol === 'AAPL' ? 195 : 100;
-      candles = generateFallbackCandles(basePrice, 100);
+    const isLive = candles && candles.length > 0;
+
+    if (!isLive) {
+      // Live-only: no simulated candles, show an explicit empty state
+      if (emptyEl) emptyEl.classList.remove('hidden');
+      if (patternList) patternList.innerHTML = '<p class="text-[11px] text-keyboard-silver/50 py-4 text-center">No live data to analyze — waiting for real market data...</p>';
       showDataStatus('unavailable');
     } else {
-      showDataStatus(state.lastFeed ? 'Live' : 'Live');
+      if (emptyEl) emptyEl.classList.add('hidden');
+      showDataStatus('Live');
     }
 
-    state.lastCandles = candles;
+    state.lastCandles = isLive ? candles : [];
+
+    const setOrClear = (series, items) => {
+      if (series) series.setData(items);
+    };
 
     if (state.candleSeries) {
-      state.candleSeries.setData(candles.map(c => ({
-        time: c.time,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close
+      setOrClear(state.candleSeries, candles.map(c => ({
+        time: c.time, open: c.open, high: c.high, low: c.low, close: c.close
       })));
     }
 
     if (state.volumeSeries) {
-      state.volumeSeries.setData(candles.map(c => ({
-        time: c.time,
-        value: c.volume,
+      setOrClear(state.volumeSeries, candles.map(c => ({
+        time: c.time, value: c.volume,
         color: c.close >= c.open ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'
       })));
     }
 
     updateMiniChart(candles);
 
-    // Detect patterns
-    const patterns = CandlePatterns.detect(candles);
-    renderPatternList(patterns);
+    if (isLive) {
+      // Detect patterns only on real data
+      const patterns = CandlePatterns.detect(candles);
+      renderPatternList(patterns);
+    }
 
     // Update last update time
     document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
 
   } catch (e) {
     console.error('Chart load error:', e);
-    showDataStatus('Unable to load live data');
+    showDataStatus('unavailable');
   }
 }
 
@@ -2003,7 +2004,7 @@ function showDataStatus(message) {
   if (message && message !== 'Live data connected' && message !== 'Live') {
     bar.classList.remove('hidden');
     text.textContent = message === 'unavailable'
-      ? '⚠️ Live data unavailable — showing simulated/saved data. Retrying automatically...'
+      ? '⚠️ Live data unavailable — only real market data is shown here. Retrying automatically...'
       : '⚠️ ' + message;
   } else {
     bar.classList.add('hidden');
