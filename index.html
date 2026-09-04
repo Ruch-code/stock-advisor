@@ -393,9 +393,13 @@
     <!-- Navigation Tabs -->
     <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
       <button onclick="showSection('dashboard')" class="key-press tab-btn tab-active px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all" data-section="dashboard">Dashboard</button>
+      <button onclick="showSection('desk')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="desk">Market Desk</button>
+      <button onclick="showSection('paper')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="paper">Daily Paper</button>
       <button onclick="showSection('oversold')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="oversold">Oversold Stocks</button>
       <button onclick="showSection('trending')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="trending">Trending Sectors</button>
-      <button onclick="showSection('signals')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="signals">Trading Signals</button>
+      <button onclick="showSection('signals')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="signals">Stock Signals</button>
+      <button onclick="showSection('expertpanel')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="expertpanel">Expert Panel</button>
+      <button onclick="showSection('crypto')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="crypto">Crypto Guide</button>
       <button onclick="showSection('mutualfunds')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="mutualfunds">Mutual Funds</button>
       <button onclick="showSection('brokers')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="brokers">Broker Charges</button>
     </div>
@@ -512,6 +516,153 @@
       </div>
     </div>
 
+    <!-- Market Desk Section -->
+    <div id="section-desk" class="section hidden">
+      <!-- Market Clock -->
+      <div class="card rounded-2xl p-6 mb-6">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div class="flex items-center gap-3">
+            <svg class="w-6 h-6 text-purple-light" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div>
+              <h2 class="text-lg font-bold silver-text">Market Clock</h2>
+              <p class="text-xs text-keyboard-silver/50">Live session tracking for NSE (India) & NYSE/Nasdaq (US) — weekends, holidays & next-open countdown included.</p>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold px-2 py-1 rounded bg-orange-500/15 text-orange-400">NSE</span>
+                <span class="text-sm font-semibold text-keyboard-light">National Stock Exchange</span>
+              </div>
+              <span id="nseStatus" class="text-[11px] font-bold py-1 px-3 rounded-full bg-keyboard-grey/30 text-keyboard-silver/70">—</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3 text-[11px]">
+              <div>
+                <p class="text-keyboard-silver/50 mb-1">Local time (IST)</p>
+                <p id="nseTime" class="text-base font-semibold text-keyboard-light tabular-nums">—</p>
+              </div>
+              <div>
+                <p class="text-keyboard-silver/50 mb-1">Session hours</p>
+                <p class="text-sm text-keyboard-light">Pre-open 09:00 · Live 09:15–15:30</p>
+              </div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-keyboard-grey/20">
+              <p id="nseCountdownLabel" class="text-[10px] text-keyboard-silver/50 mb-1">Next open in</p>
+              <p id="nseCountdown" class="text-sm font-semibold text-purple-light tabular-nums">—</p>
+            </div>
+          </div>
+          <div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold px-2 py-1 rounded bg-blue-500/15 text-blue-400">NYSE</span>
+                <span class="text-sm font-semibold text-keyboard-light">NYSE / Nasdaq (US)</span>
+              </div>
+              <span id="usStatus" class="text-[11px] font-bold py-1 px-3 rounded-full bg-keyboard-grey/30 text-keyboard-silver/70">—</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3 text-[11px]">
+              <div>
+                <p class="text-keyboard-silver/50 mb-1">Local time (ET)</p>
+                <p id="usTime" class="text-base font-semibold text-keyboard-light tabular-nums">—</p>
+              </div>
+              <div>
+                <p class="text-keyboard-silver/50 mb-1">Session hours</p>
+                <p class="text-sm text-keyboard-light">Pre-mkt 04:00 · Live 09:30–16:00</p>
+              </div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-keyboard-grey/20">
+              <p id="usCountdownLabel" class="text-[10px] text-keyboard-silver/50 mb-1">Next open in</p>
+              <p id="usCountdown" class="text-sm font-semibold text-purple-light tabular-nums">—</p>
+            </div>
+          </div>
+        </div>
+        <p class="text-[10px] text-keyboard-silver/35 mt-4">2026 holiday calendars: NSE + NYSE/Nasdaq. *Festival dates are approximate — verify against the official NSE circular.</p>
+      </div>
+
+      <!-- NIFTY Banner / Market Desk -->
+      <div class="card rounded-2xl p-6 mb-6">
+        <div class="flex items-center justify-between mb-1 flex-wrap gap-2">
+          <div>
+            <h2 class="text-lg font-bold silver-text flex items-center gap-2">
+              <span class="text-[10px] font-bold px-2 py-1 rounded bg-orange-500/15 text-orange-400">NSE</span>
+              NIFTY 50 · Market Desk
+            </h2>
+            <p class="text-xs text-keyboard-silver/50 mt-1">India's primary benchmark — where foreign & institutional money flow shows up first.</p>
+          </div>
+          <span id="niftyStatus"></span>
+        </div>
+        <div class="flex items-end gap-4 mb-4 mt-3">
+          <span id="niftyValue" class="text-3xl font-bold tabular-nums text-keyboard-light">—</span>
+          <div id="niftyChange" class="text-sm pb-1 text-keyboard-silver/60">—</div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4" id="niftyBands"></div>
+        <div id="niftyBandgap">
+          <p class="text-[11px] font-semibold text-keyboard-silver/60 mb-2">Levels to watch <span class="font-normal text-keyboard-silver/40">· classic pivot from prior session high/low/close</span></p>
+          <div class="grid grid-cols-7 gap-1 text-center text-[10px] mb-1" id="pivotHead">
+            <span class="text-red-400/80 font-semibold">R3</span><span class="text-red-400/80 font-semibold">R2</span><span class="text-red-400/80 font-semibold">R1</span><span class="text-purple-light font-semibold">PIVOT</span><span class="text-green-400/80 font-semibold">S1</span><span class="text-green-400/80 font-semibold">S2</span><span class="text-green-400/80 font-semibold">S3</span>
+          </div>
+          <div class="grid grid-cols-7 gap-1 text-center text-sm font-semibold tabular-nums" id="pivotGrid">
+            <span class="rounded bg-keyboard-black/40 py-1.5 text-keyboard-silver/60">—</span>
+            <span class="rounded bg-keyboard-black/40 py-1.5 text-keyboard-silver/60">—</span>
+            <span class="rounded bg-keyboard-black/40 py-1.5 text-keyboard-silver/60">—</span>
+            <span class="rounded bg-keyboard-black/40 py-1.5 text-keyboard-silver/60">—</span>
+            <span class="rounded bg-keyboard-black/40 py-1.5 text-keyboard-silver/60">—</span>
+            <span class="rounded bg-keyboard-black/40 py-1.5 text-keyboard-silver/60">—</span>
+            <span class="rounded bg-keyboard-black/40 py-1.5 text-keyboard-silver/60">—</span>
+          </div>
+        </div>
+        <div id="marketMap" class="mt-4 rounded-lg bg-keyboard-black/40 border border-keyboard-grey/20 p-3 text-xs text-keyboard-silver/70"></div>
+        <div id="niftyUnavailable" class="mt-4 hidden rounded-lg bg-red-500/5 border border-red-500/20 p-3 text-xs text-red-300/80">
+          <span class="font-semibold text-red-300">No live NIFTY feed.</span> Free data sources gate Indian indices (NSE). The banner auto-lights up if a paid Indian-market feed key is added later — levels and the market map below will compute instantly.
+        </div>
+      </div>
+
+      <!-- Commodities -->
+      <div class="card rounded-2xl p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-bold silver-text">Commodities Dashboard</h2>
+            <p class="text-xs text-keyboard-silver/50 mt-1">Live ETF proxies (USD) with day-over-day change and what each move means in plain English.</p>
+          </div>
+          <span class="text-[10px] text-keyboard-silver/40">Refreshes with the desk</span>
+        </div>
+        <div id="commoditiesGrid" class="grid grid-cols-2 lg:grid-cols-5 gap-3"></div>
+        <div id="commoditiesUnavailable" class="mt-4 hidden rounded-lg bg-red-500/5 border border-red-500/20 p-3 text-xs text-red-300/80">
+          <span class="font-semibold text-red-300">Commodity feed unavailable right now.</span> Retrying on refresh.
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Paper Section -->
+    <div id="section-paper" class="section hidden">
+      <div class="card rounded-2xl p-6">
+        <div class="border-b-4 border-keyboard-grey/30 pb-4 mb-4">
+          <div class="flex items-end justify-between flex-wrap gap-2">
+            <h2 class="text-2xl md:text-3xl font-black tracking-wide silver-text" style="font-family:'Georgia', 'Times New Roman', serif;">The Daily Finance Paper</h2>
+            <span id="paperDate" class="text-xs text-keyboard-silver/60"></span>
+          </div>
+          <p class="text-[10px] text-keyboard-silver/40 mt-1 tracking-[0.25em] uppercase">Markets · Money · Ideas — compiled live from Google News</p>
+        </div>
+        <div class="flex gap-2 mb-5 flex-wrap" id="paperTopics">
+          <button onclick="loadPaper('markets')" data-topic="markets" class="key-press text-xs px-3 py-1.5 rounded-lg bg-purple-glow/20 text-purple-light font-semibold transition-colors">Markets</button>
+          <button onclick="loadPaper('ideas')" data-topic="ideas" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">Stock ideas</button>
+          <button onclick="loadPaper('gold')" data-topic="gold" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">Gold & Crude</button>
+          <button onclick="loadPaper('wallst')" data-topic="wallst" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">Wall Street</button>
+        </div>
+        <div id="paperLoading" class="space-y-3">
+          <div class="shimmer rounded-lg h-16"></div>
+          <div class="shimmer rounded-lg h-16"></div>
+          <div class="shimmer rounded-lg h-16"></div>
+          <div class="shimmer rounded-lg h-16"></div>
+        </div>
+        <div id="paperNews" class="hidden space-y-3"></div>
+        <div id="paperUnavailable" class="hidden rounded-lg bg-red-500/5 border border-red-500/20 p-4 text-xs text-red-300/80">
+          <span class="font-semibold text-red-300">Headlines are not reachable right now.</span> The news bridge retries automatically.
+        </div>
+      </div>
+    </div>
+
     <!-- Oversold Stocks Section -->
     <div id="section-oversold" class="section hidden">
       <div class="card rounded-2xl p-6 mb-6">
@@ -540,16 +691,29 @@
       </div>
     </div>
 
-    <!-- Trading Signals Section -->
+    <!-- Stock Signals Section -->
     <div id="section-signals" class="section hidden">
       <div class="card rounded-2xl p-6 mb-6">
-        <h2 class="text-lg font-bold silver-text mb-2">Trading Signals</h2>
-        <p class="text-xs text-keyboard-silver/50 mb-4">Entry, exit, and stop loss recommendations based on technical analysis.</p>
-        <div id="signalsList" class="space-y-3"></div>
-        <div id="signalsLoading" class="space-y-3">
-          <div class="shimmer rounded-xl h-32"></div>
-          <div class="shimmer rounded-xl h-32"></div>
-          <div class="shimmer rounded-xl h-32"></div>
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="text-lg font-bold silver-text">Stock Signals</h2>
+            <p class="text-xs text-keyboard-silver/50 mt-1">26 fundamentally strong picks (NSE + US). Live rankings recompute on each refresh. Tap any pick for a candlestick chart with a pattern callout.</p>
+          </div>
+          <div class="flex gap-2 flex-wrap" id="ssTabs">
+            <button onclick="setSignalTab('bought')" id="ssTabBought" class="key-press text-xs px-3 py-1.5 rounded-lg bg-purple-glow/20 text-purple-light font-semibold transition-colors">🔥 Most Bought Today</button>
+            <button onclick="setSignalTab('oversold')" id="ssTabOversold" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">🎯 Oversold (RSI ≤ 45)</button>
+            <button onclick="loadStockSignals(true)" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">↻ Refresh</button>
+          </div>
+        </div>
+        <p class="text-[10px] text-keyboard-silver/40 mb-3">NSE symbols need a paid Indian-market data feed — free sources gate them, so they show an honest "no live feed" badge. US picks are fully live.</p>
+        <div id="ssList" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+        <div id="ssLoading" class="space-y-3">
+          <div class="shimmer rounded-xl h-24"></div>
+          <div class="shimmer rounded-xl h-24"></div>
+          <div class="shimmer rounded-xl h-24"></div>
+        </div>
+        <div id="ssUnavailable" class="hidden mt-4 rounded-lg bg-red-500/5 border border-red-500/20 p-3 text-xs text-red-300/80">
+          <span class="font-semibold text-red-300">Live signal feed unavailable.</span> Retry in a few seconds.
         </div>
       </div>
     </div>
@@ -582,6 +746,175 @@
           <div id="inBrokersList" class="space-y-3"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ABCD Expert Panel Section -->
+    <div id="section-expertpanel" class="section hidden">
+      <div class="card rounded-2xl p-6 mb-6">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="text-lg font-bold silver-text flex items-center gap-2">🧠 ABCD Expert Panel</h2>
+            <p class="text-xs text-keyboard-silver/50 mt-1">25 Indian market masters — each with their own lens — score the watchlist and vote BUY / HOLD / AVOID. Their raw votes feed an ABCD category (Established Compounder / Growth Engine / Cyclical Play / Revival Bet).</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="loadExpertPanel(true)" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">↻ Re-score</button>
+          </div>
+        </div>
+        <div class="rounded-lg bg-keyboard-black/40 border border-keyboard-grey/20 p-4 mt-4 mb-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div><p class="text-[10px] text-keyboard-silver/50 mb-1">Panelists</p><p id="epCount" class="text-2xl font-bold text-purple-light">25</p></div>
+          <div><p class="text-[10px] text-keyboard-silver/50 mb-1">Metrics used</p><p class="text-2xl font-bold text-keyboard-light">6</p></div>
+          <div><p class="text-[10px] text-keyboard-silver/50 mb-1">Styles</p><p class="text-2xl font-bold text-keyboard-light">6</p></div>
+          <div><span class="inline-flex items-center gap-1.5 mt-1"><span class="w-2 h-2 rounded-full bg-green-500"></span><span class="text-[10px] text-keyboard-silver/60">Live data</span></span></div>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-4" id="epLegend"></div>
+        <div id="epUnavailable" class="hidden mb-4 rounded-lg bg-red-500/5 border border-red-500/20 p-3 text-xs text-red-300/80">
+          <span class="font-semibold text-red-300">No live quotes reachable for scoring.</span> The panel needs candles to compute consistency, growth and margin of safety — it retries on refresh.
+        </div>
+        <div id="epList" class="space-y-3"></div>
+        <div id="epLoading" class="space-y-3">
+          <div class="shimmer rounded-xl h-28"></div>
+          <div class="shimmer rounded-xl h-28"></div>
+          <div class="shimmer rounded-xl h-28"></div>
+        </div>
+        <p class="text-[10px] text-keyboard-silver/35 mt-4">Expert lenses are real investment philosophies; the numeric scoring is a transparent education model built from live prices + curated sector maps — not a recommendation to buy or sell. NSE symbols need a paid Indian-market data feed to light up.</p>
+      </div>
+    </div>
+
+    <!-- Crypto Guide Section -->
+    <div id="section-crypto" class="section hidden">
+      <div class="card rounded-2xl p-6 mb-6">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <div>
+            <h2 class="text-lg font-bold silver-text flex items-center gap-2">🪙 Crypto Guide · India</h2>
+            <p class="text-xs text-keyboard-silver/50 mt-1">Binance-first India playbook — where the real money often leaks (tax, timing, charges, knowledge) and how to keep it.</p>
+          </div>
+          <div id="btcTicker" class="rounded-lg bg-keyboard-black/40 border border-keyboard-grey/20 px-3 py-2 text-right">
+            <p class="text-[9px] text-keyboard-silver/50 uppercase tracking-wider">Bitcoin · live</p>
+            <p class="text-base font-bold tabular-nums text-keyboard-light">—</p>
+            <p id="btcChg" class="text-[10px] font-bold">—</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="space-y-4">
+            <div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4">
+              <h3 class="text-sm font-bold silver-text mb-3">1 · Where to buy (Binance-first, FIU-registered)</h3>
+              <div class="overflow-x-auto"><table class="w-full text-[11px] text-keyboard-silver/70">
+                <thead><tr class="text-left text-keyboard-silver/40 border-b border-keyboard-grey/20"><th class="py-1 pr-3">Exchange</th><th class="py-1 pr-3">Best for</th><th class="py-1">Fee / note</th></tr></thead>
+                <tbody>
+                  <tr class="border-b border-keyboard-grey/10"><td class="py-1.5 pr-3 font-semibold text-purple-light">Binance</td><td class="py-1.5 pr-3">Everything — widest liquidity, P2P INR</td><td class="py-1.5">0.1% spot (0.075% some pairs)</td></tr>
+                  <tr class="border-b border-keyboard-grey/10"><td class="py-1.5 pr-3">CoinSwitch</td><td class="py-1.5 pr-3">Easiest UX</td><td class="py-1.5">~0.4-1% mark-up</td></tr>
+                  <tr class="border-b border-keyboard-grey/10"><td class="py-1.5 pr-3">CoinDCX</td><td class="py-1.5 pr-3">Most coins</td><td class="py-1.5">0.05-0.1% + spread</td></tr>
+                  <tr class="border-b border-keyboard-grey/10"><td class="py-1.5 pr-3">ZebPay</td><td class="py-1.5 pr-3">Simplicity</td><td class="py-1.5">~0.2%</td></tr>
+                  <tr><td class="py-1.5 pr-3">Bitbns</td><td class="py-1.5 pr-3">Altcoins</td><td class="py-1.5">Low depth, use small amounts</td></tr>
+                </tbody>
+              </table></div>
+              <p class="text-[10px] text-keyboard-silver/50 mt-2">Binance India is FIU-registered — your main on-ramp. Deposit INR via UPI/P2P within bank limits; keep the exchange a transit point, not a home.</p>
+            </div>
+            <div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4">
+              <h3 class="text-sm font-bold silver-text mb-3">2 · KYC — 5–15 minute eKYC</h3>
+              <ol class="text-[11px] text-keyboard-silver/70 space-y-1.5 ml-4 list-decimal">
+                <li>PAN card — must match the bank account name</li>
+                <li>Aadhaar card — OTP-based eKYC</li>
+                <li>Bank account — IFSC + cancelled-cheque photo</li>
+                <li>Selfie / liveness check</li>
+                <li>Signature on a white paper</li>
+              </ol>
+            </div>
+            <div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4">
+              <h3 class="text-sm font-bold silver-text mb-3">3 · Portfolio allocation (the boring winner)</h3>
+              <div class="grid grid-cols-4 text-center text-[10px] mb-2">
+                <span class="text-keyboard-silver/50">Bucket</span><span class="text-keyboard-silver/50">Allocation</span><span class="text-keyboard-silver/50">Coins</span><span class="text-keyboard-silver/50">Horizon</span>
+              </div>
+              <div class="space-y-2 text-[10px] text-keyboard-silver/70">
+                <div class="grid grid-cols-4 gap-2 rounded-lg bg-keyboard-black/20 p-2"><span class="font-bold text-keyboard-light">Core</span><span class="font-bold text-purple-light">80%</span><span>BTC ~50% · ETH ~30% · SOL/BNB ~20%</span><span>5+ years</span></div>
+                <div class="grid grid-cols-4 gap-2 rounded-lg bg-keyboard-black/20 p-2"><span class="font-bold text-keyboard-light">Infra</span><span class="font-bold text-purple-light">15%</span><span>SOL, BNB, ARB, OP, LINK, UNI, AAVE</span><span>2–4 years</span></div>
+                <div class="grid grid-cols-4 gap-2 rounded-lg bg-keyboard-black/20 p-2"><span class="font-bold text-keyboard-light">Narrative</span><span class="font-bold text-red-400">≤5%</span><span>AI (FET, RNDR), RWA (ONDO), DePIN</span><span>only near −60% from ATH</span></div>
+                <div class="grid grid-cols-4 gap-2 rounded-lg bg-keyboard-black/20 p-2"><span class="font-bold text-keyboard-light">Stables</span><span class="font-bold text-purple-light">10%</span><span>USDT/USDC (yield on Aave/Ledger)</span><span>dry powder</span></div>
+              </div>
+              <p class="text-[10px] text-keyboard-silver/50 mt-2">The order of these buckets is the single biggest edge most people ignore: build Core before chasing narrative coins.</p>
+            </div>
+            <div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4">
+              <h3 class="text-sm font-bold silver-text mb-3">4 · Tax — the silent 31% eroder</h3>
+              <div class="rounded-lg bg-red-500/5 border border-red-500/20 p-3 text-[11px] text-keyboard-silver/80 mb-3">
+                <p><b class="text-red-300">Every sale:</b> 30% flat tax + 1% TDS on each transaction (Sec 115BBH / 194S). No loss set-off. No 80C relief. It is the same 30% whether you held 1 day or 5 years.</p>
+              </div>
+              <div class="space-y-2 text-[10px] text-keyboard-silver/70">
+                <div class="flex gap-2"><span class="text-green-400">✔</span><span><b class="text-keyboard-light">Don't churn.</b> Every round-trip burns ~31%+ — traders who scalp lose to the tax, not the market.</span></div>
+                <div class="flex gap-2"><span class="text-green-400">✔</span><span><b class="text-keyboard-light">Don't sell to "rebalance".</b> Prefer yield (Aave/Ledger) or borrow against BTC instead of selling into tax.</span></div>
+                <div class="flex gap-2"><span class="text-green-400">✔</span><span><b class="text-keyboard-light">Hold in self-custody ≥ 1 year</b> — transfers between your own wallets are not taxable events.</span></div>
+                <div class="flex gap-2"><span class="text-red-400">✘</span><span>P2P cash deals you can't prove = gift of a tax problem. Keep exchange trails.</span></div>
+              </div>
+              <p class="text-[10px] text-keyboard-silver/50 mt-2">File Schedule VDA in your ITR. If you hold long-term and never sell, the 30% only ever touches what you actually realize.</p>
+            </div>
+          </div>
+          <div class="space-y-4">
+            <div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4">
+              <h3 class="text-sm font-bold silver-text mb-3">5 · How traders lose money (the 4 traps)</h3>
+              <div class="space-y-2 text-[10px] text-keyboard-silver/70">
+                <div class="rounded-lg bg-keyboard-black/20 p-2.5 border-l-2 border-red-400/60"><b class="text-red-300">Timing trap</b> — buying after a green candle you saw on a reel. Fear & Greed is screaming; you are the exit liquidity.<br><span class="text-keyboard-silver/50">Fix: fixed DCA on set dates, never lump-sum into green streaks. Buy when -60% from its own ATH, not +60% from it.</span></div>
+                <div class="rounded-lg bg-keyboard-black/20 p-2.5 border-l-2 border-amber-400/60"><b class="text-amber-300">Charges trap</b> — 0.1% fee per side ×2 + spread + ~31% tax per round-trip means a "profitable" 10% trade can actually net negative.<br><span class="text-keyboard-silver/50">Fix: 5–10 trades a year, not 5–10 a day. Use limit orders; batch buys.</span></div>
+                <div class="rounded-lg bg-keyboard-black/20 p-2.5 border-l-2 border-purple-glow/60"><b class="text-purple-light">Knowledge trap</b> — buying an altcoin because of a logo. You don't know what backs it, who controls it, or why it moves.<br><span class="text-keyboard-silver/50">Fix: BTC & ETH first. A narrative coin is a ≤5% lottery ticket, bought only when deeply beaten down.</span></div>
+                <div class="rounded-lg bg-keyboard-black/20 p-2.5 border-l-2 border-green-400/60"><b class="text-green-400">Security trap</b> — keeping everything on the exchange, SMS 2FA, seed phrase on a screenshot.<br><span class="text-keyboard-silver/50">Fix: exchange = on-ramp only. Hardware wallet above ₹50K. Authenticator-app 2FA. Seed on metal.</span></div>
+              </div>
+            </div>
+            <div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4">
+              <h3 class="text-sm font-bold silver-text mb-3">6 · Quick start (15 minutes)</h3>
+              <ol class="text-[11px] text-keyboard-silver/70 space-y-1.5 ml-4 list-decimal">
+                <li>Create Binance → enable INR P2P/UPI deposit</li>
+                <li>eKYC: PAN + Aadhaar OTP + selfie + bank IFSC</li>
+                <li>Deposit ₹1,000 → buy ₹500 BTC + ₹500 ETH</li>
+                <li>Set a weekly auto-buy (SIP) ₹500–2,000 on fixed dates</li>
+                <li>Own key: hardware wallet (Ledger ~₹7,999) above ₹50K</li>
+                <li>Transfer to self-custody — exchange stays an on-ramp only</li>
+                <li>Track in CoinStats/Delta; file ITR with Schedule VDA</li>
+              </ol>
+            </div>
+            <div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4">
+              <h3 class="text-sm font-bold silver-text mb-3">7 · Binance charges, decoded</h3>
+              <div class="space-y-2 text-[10px] text-keyboard-silver/70">
+                <div class="flex justify-between"><span>Spot maker/taker</span><span class="font-semibold tabular-nums">0.1% / 0.1% (BNB burn = −25%)</span></div>
+                <div class="flex justify-between"><span>Stable coins (USDC-free pairs)</span><span class="font-semibold tabular-nums">0%–0.01%</span></div>
+                <div class="flex justify-between"><span>P2P / INR on-ramp</span><span class="font-semibold">0% fee · bank-limit driven</span></div>
+                <div class="flex justify-between"><span>Withdrawal (BTC network)</span><span class="font-semibold tabular-nums">network fee ~$1–$3</span></div>
+                <div class="flex justify-between"><span>Margin/leverage funding</span><span class="font-semibold text-red-400">avoid — funding + liquidation = wealth drain</span></div>
+              </div>
+              <p class="text-[10px] text-keyboard-silver/50 mt-2">BNB for fees, limit orders, and long holds — three habits that quietly cut your real cost by 40%+.</p>
+            </div>
+            <div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4">
+              <h3 class="text-sm font-bold silver-text mb-3">8 · Security checklist</h3>
+              <div class="space-y-1.5 text-[10px] text-keyboard-silver/70">
+                <div class="flex gap-2"><span class="text-green-400">✔</span><span>Hardware wallet for anything &gt; ₹50,000</span></div>
+                <div class="flex gap-2"><span class="text-green-400">✔</span><span>2FA = authenticator app, never SMS</span></div>
+                <div class="flex gap-2"><span class="text-green-400">✔</span><span>Seed phrase on metal, split across 2 locations</span></div>
+                <div class="flex gap-2"><span class="text-red-400">✘</span><span>Never photo/screenshot your seed; never share "support codes"</span></div>
+                <div class="flex gap-2"><span class="text-red-400">✘</span><span>No deposit addresses from DMs / unknown links</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+<!-- Stock Signal Chart Modal -->
+  <div id="ssModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/70" onclick="closeSignalChart()"></div>
+    <div class="relative card rounded-2xl w-full max-w-3xl p-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-2">
+        <div>
+          <h3 id="ssModalTitle" class="text-sm font-bold silver-text"></h3>
+          <p id="ssModalSub" class="text-[10px] text-keyboard-silver/50"></p>
+        </div>
+        <button onclick="closeSignalChart()" class="key-press text-keyboard-silver/70 hover:text-keyboard-light text-2xl leading-none px-2">×</button>
+      </div>
+      <div id="ssChart" class="relative h-[320px]">
+        <div id="ssChartEmpty" class="hidden absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-6">
+          <p class="text-2xl mb-2">📡</p>
+          <p class="text-sm font-semibold text-keyboard-silver/80 mb-1">No live candles for this symbol</p>
+          <p class="text-[11px] text-keyboard-silver/50 max-w-xs">Free sources gate NSE/BSE data. This chart lights up if a paid Indian-market feed key is added.</p>
+        </div>
+      </div>
+      <div id="ssPattern" class="mt-3 space-y-2"></div>
     </div>
   </div>
 
@@ -1614,9 +1947,13 @@ function showSection(name) {
   // Load section data
   if (name === 'oversold') renderOversold(state.market === 'US' ? STOCKS.US.oversold : STOCKS.India.oversold);
   if (name === 'trending') renderTrending(state.market === 'US' ? STOCKS.US.trending : STOCKS.India.trending);
-  if (name === 'signals') renderSignals(TRADING_SIGNALS);
+  if (name === 'signals') loadStockSignals();
   if (name === 'mutualfunds') renderMutualFunds();
   if (name === 'brokers') renderBrokers();
+  if (name === 'desk') { renderClock(); loadDesk(); }
+  if (name === 'paper' && state.paperTopic) loadPaper();
+  if (name === 'expertpanel') loadExpertPanel();
+  if (name === 'crypto') loadCrypto();
 }
 
 function toggleMarket() {
@@ -2030,6 +2367,741 @@ function startLiveUpdates() {
 
 function stopLiveUpdates() {
   if (updateInterval) clearInterval(updateInterval);
+}
+
+// ============================================================
+// MARKET CLOCK (NSE + US) — sessions, weekends, holidays, countdown
+// ============================================================
+const CLOCK_CFG = {
+  NSE: { tz: 'Asia/Kolkata',     pre: [9, 0],  open: [9, 15],  close: [15, 30] },
+  US:  { tz: 'America/New_York', pre: [4, 0],  open: [9, 30],  close: [16, 0] }
+};
+const HOLIDAYS_2026 = {
+  NSE: {
+    '2026-01-26': 'Republic Day',
+    '2026-03-04': 'Holi',
+    '2026-04-03': 'Good Friday',
+    '2026-04-14': 'Dr. Ambedkar Jayanti',
+    '2026-05-01': 'Maharashtra Day',
+    '2026-08-17': 'Independence Day (observed)',
+    '2026-10-02': 'Mahatma Gandhi Jayanti',
+    '2026-10-21': 'Dussehra*',
+    '2026-11-08': 'Diwali*',
+    '2026-11-25': 'Guru Nanak Jayanti*',
+    '2026-12-25': 'Christmas'
+  },
+  US: {
+    '2026-01-01': 'New Year\u2019s Day',
+    '2026-01-19': 'Martin Luther King Jr. Day',
+    '2026-02-16': 'Washington\u2019s Birthday',
+    '2026-04-03': 'Good Friday',
+    '2026-05-25': 'Memorial Day',
+    '2026-06-19': 'Juneteenth',
+    '2026-07-03': 'Independence Day (observed)',
+    '2026-09-07': 'Labor Day',
+    '2026-11-26': 'Thanksgiving',
+    '2026-12-25': 'Christmas'
+  }
+};
+const CLOCK_CLOCK12 = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+const CLOCK_CLOCK12_US = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+function tzParts(date, tz) {
+  const fmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const p = Object.fromEntries(fmt.formatToParts(date).map(x => [x.type, x.value]));
+  return { wd: p.weekday, mo: +p.month, d: +p.day, y: +p.year, h: +p.hour, mi: +p.minute, s: +p.second };
+}
+function zoneOffset(date, tz) {
+  const p = tzParts(date, tz);
+  return Math.round((Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi) - date.getTime()) / 60000);
+}
+function localToEpoch(tz, y, mo, d, h, mi) {
+  const guess = Date.UTC(y, mo - 1, d, h, mi);
+  return guess - zoneOffset(new Date(guess), tz) * 60000;
+}
+function clockDayKey(p) { return `${p.y}-${String(p.mo).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`; }
+
+function clockState(key) {
+  const cfg = CLOCK_CFG[key];
+  const now = new Date();
+  const p = tzParts(now, cfg.tz);
+  const [oh, om] = cfg.open, [ch, cm] = cfg.close;
+  const cur = p.h * 60 + p.mi;
+  const start = oh * 60 + om, end = ch * 60 + cm, pre = cfg.pre[0] * 60 + cfg.pre[1];
+  const weekend = p.wd === 'Sat' || p.wd === 'Sun';
+  const hol = HOLIDAYS_2026[key][clockDayKey(p)];
+
+  let state, label, cls, isOpen;
+  if (weekend)      { state = 'closed';  label = 'Closed · Weekend';       cls = 'bg-keyboard-grey/40 text-keyboard-silver/70'; }
+  else if (hol)     { state = 'closed';  label = 'Closed · ' + hol;        cls = 'bg-red-500/15 text-red-300'; }
+  else if (cur >= start && cur < end) { state = 'open'; label = '● Live';  cls = 'bg-green-500/15 text-green-400'; isOpen = true; }
+  else if (cur >= pre && cur < start) { state = 'pre';  label = key === 'US' ? 'Pre-Market' : 'Pre-open'; cls = 'bg-amber-500/15 text-amber-400'; }
+  else if (cur < pre)                 { state = 'pre';  label = key === 'US' ? 'Pre-Market' : 'Pre-open'; cls = 'bg-amber-500/15 text-amber-400'; }
+  else                                { state = 'closed'; label = key === 'US' ? 'After-hours' : 'Closed'; cls = 'bg-keyboard-grey/40 text-keyboard-silver/70'; }
+
+  const fmt = new Intl.DateTimeFormat('en-US', { timeZone: cfg.tz, weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+  const timeStr = fmt.format(new Date());
+
+  let countLabel, target = null;
+  if (isOpen) { target = localToEpoch(cfg.tz, p.y, p.mo, p.d, ch, cm); countLabel = 'Closes in'; }
+  else if (state === 'pre') { target = localToEpoch(cfg.tz, p.y, p.mo, p.d, oh, om); countLabel = 'Session opens in'; }
+  else {
+    for (let i = 1; i <= 8; i++) {
+      const t = new Date(now.getTime());
+      t.setUTCDate(t.getUTCDate() + i);
+      const q = tzParts(t, cfg.tz);
+      if (q.wd !== 'Sat' && q.wd !== 'Sun' && !HOLIDAYS_2026[key][clockDayKey(q)]) {
+        target = localToEpoch(cfg.tz, q.y, q.mo, q.d, oh, om);
+        break;
+      }
+    }
+    countLabel = 'Next open in';
+  }
+  return { state, label, cls, timeStr, countLabel, target };
+}
+
+function fmtCd(ms) {
+  if (ms <= 0) return '—';
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  const hh = String(h).padStart(2, '0'), mm = String(m).padStart(2, '0'), ss = String(sec).padStart(2, '0');
+  return d > 0 ? `${d}d ${hh}h ${mm}m` : `${hh}h ${mm}m ${ss}s`;
+}
+
+function renderClock() {
+  const nse = clockState('NSE'), us = clockState('US');
+  const now = Date.now();
+  document.getElementById('nseStatus').className = 'text-[11px] font-bold py-1 px-3 rounded-full ' + nse.cls;
+  document.getElementById('nseStatus').textContent = nse.label;
+  document.getElementById('nseTime').textContent = nse.timeStr;
+  document.getElementById('nseCountdownLabel').textContent = nse.countLabel + ':';
+  document.getElementById('nseCountdown').textContent = nse.target ? fmtCd(nse.target - now) : '—';
+  document.getElementById('usStatus').className = 'text-[11px] font-bold py-1 px-3 rounded-full ' + us.cls;
+  document.getElementById('usStatus').textContent = us.label;
+  document.getElementById('usTime').textContent = us.timeStr;
+  document.getElementById('usCountdownLabel').textContent = us.countLabel + ':';
+  document.getElementById('usCountdown').textContent = us.target ? fmtCd(us.target - now) : '—';
+}
+
+// ============================================================
+// NIFTY MARKET DESK — 52-wk bands, classic pivots, market map
+// ============================================================
+const NIFTY_SYMBOLS = ['NIFTY', 'NIFTY.NS', 'NIFTY50', 'NIFTY.NSE'];
+
+function nfmt(n) {
+  if (n == null || isNaN(n)) return '—';
+  return n >= 1000 ? n.toFixed(1).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : n.toFixed(2);
+}
+
+function computePivots(candles) {
+  if (!candles || candles.length < 2) return null;
+  const prev = candles[candles.length - 2];
+  const P = (prev.high + prev.low + prev.close) / 3;
+  return {
+    r3: prev.high + 2 * (P - prev.low),
+    r2: P + (prev.high - prev.low),
+    r1: 2 * P - prev.low,
+    pivot: P,
+    s1: 2 * P - prev.high,
+    s2: P - (prev.high - prev.low),
+    s3: prev.low - 2 * (prev.high - P)
+  };
+}
+
+function buildMarketMap(cur, piv, hi, lo) {
+  const dist = (a, b) => Math.abs((b / a - 1) * 100).toFixed(1) + '%';
+  const lines = [];
+  if (cur >= piv.pivot) lines.push('Price sits <b class="text-green-400">' + dist(piv.pivot, cur) + '</b> above the pivot — short-term bias is <b class="text-green-400">bullish</b> while it holds.');
+  else lines.push('Price sits <b class="text-red-400">' + dist(cur, piv.pivot) + '</b> below the pivot — short-term bias is <b class="text-red-400">cautious</b>.');
+  if (cur < piv.r1) lines.push('Nearest resistance <b class="text-red-400">R1 ≈ ' + nfmt(piv.r1) + '</b> is ' + dist(cur, piv.r1) + ' away.');
+  if (cur > piv.s1) lines.push('Nearest support <b class="text-green-400">S1 ≈ ' + nfmt(piv.s1) + '</b> is ' + dist(piv.s1, cur) + ' away.');
+  if (hi) lines.push('52-week high ' + nfmt(hi) + ' — currently ' + dist(hi, cur) + ' below the range top.');
+  if (lo) lines.push('52-week low ' + nfmt(lo) + ' — currently ' + dist(lo, cur) + ' above the range bottom.');
+  return lines.join(' ');
+}
+
+async function loadNifty() {
+  const unavail = document.getElementById('niftyUnavailable');
+  document.getElementById('niftyStatus').innerHTML = '<span class="text-[10px] text-keyboard-silver/50">checking live feed…</span>';
+  for (const sym of NIFTY_SYMBOLS) {
+    try {
+      const d = await fetchYahooQuoteData(sym, '1d', '1y');
+      const candles = d && d.length ? d : null;
+      if (candles && candles.length >= 2) {
+        const cur = candles[candles.length - 1].close;
+        const prev = candles[candles.length - 2].close;
+        const chg = ((cur / prev) - 1) * 100;
+        const piv = computePivots(candles);
+        const hi = Math.max.apply(null, candles.map(c => c.high));
+        const lo = Math.min.apply(null, candles.map(c => c.low));
+        document.getElementById('niftyValue').textContent = nfmt(cur);
+        const chgEl = document.getElementById('niftyChange');
+        chgEl.innerHTML = '<span class="' + (chg >= 0 ? 'text-green-400' : 'text-red-400') + '">' + (chg >= 0 ? '▲' : '▼') + ' ' + formatPercent(chg) + '</span> <span class="text-keyboard-silver/40">today · ' + (chg >= 0 ? 'higher' : 'lower') + '</span>';
+        document.getElementById('niftyStatus').innerHTML = '<span class="text-[10px] font-bold px-2 py-1 rounded bg-green-500/15 text-green-400">LIVE</span>';
+        // 52-week bands
+        document.getElementById('niftyBands').innerHTML = [
+          ['52-week high', hi, 'text-red-400'],
+          ['52-week low', lo, 'text-green-400'],
+          ['Range width', ((hi - lo) / lo * 100).toFixed(1) + '%', 'text-purple-light'],
+          ['vs 52-wk high', ((cur / hi - 1) * 100).toFixed(1) + '%', cur / hi > 0.95 ? 'text-red-400' : 'text-keyboard-silver/60']
+        ].map(r => '<div class="rounded-lg bg-keyboard-black/40 border border-keyboard-grey/20 p-2"><p class="text-[10px] text-keyboard-silver/50 mb-1">' + r[0] + '</p><p class="text-sm font-bold tabular-nums ' + r[2] + '">' + nfmt(r[1]) + '</p></div>').join('');
+        // pivots
+        if (piv) {
+          const cells = [
+            ['R3', piv.r3, 'text-red-400/90'], ['R2', piv.r2, 'text-red-400/80'], ['R1', piv.r1, 'text-red-400/70'],
+            ['P', piv.pivot, 'text-purple-light'],
+            ['S1', piv.s1, 'text-green-400/70'], ['S2', piv.s2, 'text-green-400/80'], ['S3', piv.s3, 'text-green-400/90']
+          ];
+          document.getElementById('pivotGrid').innerHTML = cells.map(c => '<span class="rounded bg-keyboard-black/40 py-1.5 ' + c[2] + '">' + nfmt(c[1]) + '</span>').join('');
+          document.getElementById('marketMap').innerHTML = buildMarketMap(cur, piv, hi, lo);
+        }
+        unavail.classList.add('hidden');
+        return;
+      }
+    } catch (e) { /* try next symbol */ }
+  }
+  document.getElementById('niftyStatus').innerHTML = '<span class="text-[10px] font-bold px-2 py-1 rounded bg-red-500/15 text-red-300">NO FEED</span>';
+  unavail.classList.remove('hidden');
+}
+
+// ============================================================
+// COMMODITIES — live ETF proxies with plain-English meaning
+// ============================================================
+const COMMODITIES = [
+  { s: 'GLD', name: 'Gold',     sub: 'GLD ETF · USD', icon: '🥇',
+    meaning: (c) => c >= 0 ? 'Gold is the classic safe-haven: buyers step in on fear or inflation — prices often climb while stocks wobble.' : 'Falling gold usually means risk appetite is back — investors prefer stocks & growth over the safe-haven metal.' },
+  { s: 'SLV', name: 'Silver',   sub: 'SLV ETF · USD', icon: '🥈',
+    meaning: (c) => c >= 0 ? 'Silver is gold\u2019s "industrially wired" cousin — firm prices signal inflation hedging plus healthy industrial use (solar, electronics).' : 'Silver easing hints at cooling industrial activity — solar, electronics and jewellery demand all feed this price.' },
+  { s: 'BNO', name: 'Brent',    sub: 'BNO ETF · USD', icon: '🛢️',
+    meaning: (c) => c >= 0 ? 'Higher Brent lifts fuel & input costs — it squeezes airlines, paints & FMCG margins, but helps oil & gas producers.' : 'Cheaper Brent eases inflation pressure — good for airlines and consumers, while energy stocks soften.' },
+  { s: 'USO', name: 'WTI',      sub: 'USO ETF · USD', icon: '⛽',
+    meaning: (c) => c >= 0 ? 'WTI rising signals tighter supply or stronger demand — pump prices and logistics costs head up.' : 'WTI falling is a consumer-plus: cheaper petrol and shipping, though energy producers feel the pinch.' },
+  { s: 'UUP', name: 'US Dollar',sub: 'UUP ETF · USD', icon: '💵',
+    meaning: (c) => c >= 0 ? 'A firmer dollar makes imports costlier for India & emerging markets, pressures EM equities, and weighs on gold.' : 'A softer dollar supports gold, Indian imports and emerging-market stocks.' }
+];
+
+async function loadCommodities() {
+  const grid = document.getElementById('commoditiesGrid');
+  const unavail = document.getElementById('commoditiesUnavailable');
+  const rows = [];
+  await Promise.all(COMMODITIES.map(async (c) => {
+    try {
+      const candles = await fetchYahooQuoteData(c.s, '1d', '6mo');
+      if (candles && candles.length >= 2) {
+        const last = candles[candles.length - 1], prev = candles[candles.length - 2];
+        const chg = ((last.close / prev.close) - 1) * 100;
+        rows.push({ c, price: last.close, chg });
+      }
+    } catch (e) { /* keep missing */ }
+  }));
+  if (rows.length === 0) { unavail.classList.remove('hidden'); return; }
+  unavail.classList.add('hidden');
+  grid.innerHTML = rows.map(r => {
+    const up = r.chg >= 0;
+    return '<div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-3 hover:border-purple-glow/40 transition-colors">' +
+      '<div class="flex items-center justify-between mb-2"><span class="text-2xl">' + r.c.icon + '</span>' +
+      '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ' + (up ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400') + '">' + (up ? '▲' : '▼') + ' ' + formatPercent(r.chg) + '</span></div>' +
+      '<p class="text-sm font-bold text-keyboard-light">' + r.c.name + '</p>' +
+      '<p class="text-xs tabular-nums text-keyboard-silver/70 mb-2">$ ' + nfmt(r.price) + ' <span class="text-[9px] text-keyboard-silver/40">' + r.c.sub + '</span></p>' +
+      '<p class="text-[10px] text-keyboard-silver/50 leading-relaxed">' + r.c.meaning(up) + '</p></div>';
+  }).join('');
+}
+
+async function loadDesk() {
+  loadNifty();
+  loadCommodities();
+}
+
+// ============================================================
+// THE DAILY FINANCE PAPER — Google News via proxy
+// ============================================================
+const PAPER_TOPICS = { markets: 'Markets', ideas: 'Stock ideas', gold: 'Gold & Crude', wallst: 'Wall Street' };
+
+function timeAgo(pub) {
+  const t = Date.parse(pub || '');
+  if (!t) return '';
+  const s = Math.max(1, Math.floor((Date.now() - t) / 1000));
+  if (s < 60) return s + 's ago';
+  const m = Math.floor(s / 60); if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60); if (h < 24) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+}
+
+async function loadPaper(topic) {
+  state.paperTopic = topic || state.paperTopic || 'markets';
+  const t = state.paperTopic;
+  document.querySelectorAll('#paperTopics button').forEach(b => {
+    const act = b.dataset.topic === t;
+    b.className = 'key-press text-xs px-3 py-1.5 rounded-lg transition-colors ' + (act ? 'bg-purple-glow/20 text-purple-light font-semibold' : 'bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50');
+  });
+  const dateEl = document.getElementById('paperDate');
+  if (dateEl) dateEl.textContent = new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date());
+
+  const cached = getCached('paper_' + t, 120000);
+  if (cached && cached.items && cached.items.length) { renderPaper(t, cached); return; }
+
+  document.getElementById('paperLoading').classList.remove('hidden');
+  document.getElementById('paperNews').classList.add('hidden');
+  document.getElementById('paperUnavailable').classList.add('hidden');
+  try {
+    const res = await fetchWithTimeout(API.YAHOO_QUOTE + '?mode=news&topic=' + encodeURIComponent(t), {}, 15000);
+    const d = await res.json();
+    if (d && Array.isArray(d.items) && d.items.length) { setCache('paper_' + t, d); renderPaper(t, d); }
+    else throw new Error((d && d.error) ? d.error : 'no items');
+  } catch (e) {
+    document.getElementById('paperLoading').classList.add('hidden');
+    document.getElementById('paperUnavailable').classList.remove('hidden');
+  }
+}
+
+function renderPaper(topic, d) {
+  document.getElementById('paperLoading').classList.add('hidden');
+  document.getElementById('paperUnavailable').classList.add('hidden');
+  const list = document.getElementById('paperNews');
+  list.classList.remove('hidden');
+  const tag = PAPER_TOPICS[topic] || 'Markets';
+  list.innerHTML = d.items.map((it, i) =>
+    '<a href="' + it.link + '" target="_blank" rel="noopener nofollow" class="rounded-lg bg-keyboard-black/40 border border-keyboard-grey/20 border-l-2 border-l-purple-glow/40 hover:border-purple-glow/60 transition-colors p-3 flex justify-between gap-3 items-start group">' +
+      '<div class="min-w-0">' +
+        '<p class="text-sm font-semibold text-keyboard-light group-hover:text-purple-light transition-colors">' + (i + 1) + '. ' + escapeHtml(it.title) + '</p>' +
+        '<p class="text-[10px] text-keyboard-silver/50 mt-1"><span class="font-semibold text-keyboard-silver/70">' + escapeHtml(it.source || 'Reuters') + '</span>' + (timeAgo(it.pubDate) ? ' · ' + timeAgo(it.pubDate) : '') + '</p>' +
+      '</div>' +
+      '<span class="shrink-0 text-[9px] font-bold px-2 py-0.5 rounded bg-purple-glow/15 text-purple-light uppercase tracking-wider">' + tag + '</span>' +
+    '</a>'
+  ).join('');
+}
+
+// ============================================================
+// STOCK SIGNALS — 26-pick universe, live rankings, chart modal
+// ============================================================
+const SIGNAL_UNIVERSE = [
+  { s: 'TMPV.NS',       n: 'Tata Motors',        x: 'NSE', sect: 'Autos & EV' },
+  { s: 'RELIANCE.NS',   n: 'Reliance Industries',x: 'NSE', sect: 'Energy & Telecom' },
+  { s: 'TCS.NS',        n: 'TCS',                 x: 'NSE', sect: 'IT Services' },
+  { s: 'HDFCBANK.NS',   n: 'HDFC Bank',           x: 'NSE', sect: 'Banking' },
+  { s: 'INFY.NS',       n: 'Infosys',             x: 'NSE', sect: 'IT Services' },
+  { s: 'ICICIBANK.NS',  n: 'ICICI Bank',          x: 'NSE', sect: 'Banking' },
+  { s: 'ITC.NS',        n: 'ITC',                 x: 'NSE', sect: 'FMCG' },
+  { s: 'SBIN.NS',       n: 'State Bank of India', x: 'NSE', sect: 'Banking' },
+  { s: 'AXISBANK.NS',   n: 'Axis Bank',           x: 'NSE', sect: 'Banking' },
+  { s: 'WIPRO.NS',      n: 'Wipro',               x: 'NSE', sect: 'IT Services' },
+  { s: 'ONGC.NS',       n: 'ONGC',                x: 'NSE', sect: 'Oil & Gas' },
+  { s: 'TATAPOWER.NS',  n: 'Tata Power',          x: 'NSE', sect: 'Energy' },
+  { s: 'ADANIGREEN.NS', n: 'Adani Green',         x: 'NSE', sect: 'Renewables' },
+  { s: 'AAPL',          n: 'Apple',               x: 'US',  sect: 'Technology' },
+  { s: 'NVDA',          n: 'NVIDIA',              x: 'US',  sect: 'Semiconductors' },
+  { s: 'MSFT',          n: 'Microsoft',           x: 'US',  sect: 'Technology' },
+  { s: 'GOOGL',         n: 'Alphabet',            x: 'US',  sect: 'Technology' },
+  { s: 'AMZN',          n: 'Amazon',              x: 'US',  sect: 'E-commerce' },
+  { s: 'TSLA',          n: 'Tesla',               x: 'US',  sect: 'Autos & EV' },
+  { s: 'META',          n: 'Meta Platforms',      x: 'US',  sect: 'Technology' },
+  { s: 'JPM',           n: 'JPMorgan',            x: 'US',  sect: 'Banking' },
+  { s: 'UNH',           n: 'UnitedHealth',        x: 'US',  sect: 'Healthcare' },
+  { s: 'JNJ',           n: 'Johnson & Johnson',   x: 'US',  sect: 'Healthcare' },
+  { s: 'V',             n: 'Visa',                x: 'US',  sect: 'Payments' },
+  { s: 'XOM',           n: 'Exxon Mobil',         x: 'US',  sect: 'Energy' },
+  { s: 'PG',            n: 'Procter & Gamble',    x: 'US',  sect: 'Consumer' }
+];
+
+let signalTab = 'bought';
+let signalChartInst = null;
+
+async function fetchYahooQuoteData(symbol, interval, range) {
+  const url = API.YAHOO_QUOTE + '?symbol=' + encodeURIComponent(symbol) + '&interval=' + interval + '&range=' + range;
+  const res = await fetchWithTimeout(url, {}, 15000);
+  const d = await res.json();
+  const r = (d && d.chart && d.chart.result && d.chart.result[0]) || null;
+  if (!r || !r.timestamp || !r.indicators || !r.indicators.quote || !r.indicators.quote[0]) return null;
+  const q = r.indicators.quote[0];
+  const o = q.open || [], h = q.high || [], l = q.low || [], c = q.close || [], v = q.volume || [];
+  return r.timestamp.map((t, i) => ({
+    time: t, open: o[i] ?? 0, high: h[i] ?? 0, low: l[i] ?? 0, close: c[i] ?? 0, volume: v[i] ?? 0
+  }));
+}
+
+function rsiFromCloses(closes, period = 14) {
+  if (!closes || closes.length < period + 1) return null;
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) { const d = closes[i] - closes[i - 1]; if (d >= 0) gains += d; else losses -= d; }
+  let ag = gains / period, al = losses / period;
+  let rs = al === 0 ? 100 : ag / al;
+  let rsi = 100 - 100 / (1 + rs);
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    const g = Math.max(d, 0), l = Math.max(-d, 0);
+    ag = (ag * (period - 1) + g) / period;
+    al = (al * (period - 1) + l) / period;
+    rs = al === 0 ? 100 : ag / al;
+    rsi = 100 - 100 / (1 + rs);
+  }
+  return rsi;
+}
+
+async function loadStockSignals(force) {
+  const list = document.getElementById('ssList');
+  const loading = document.getElementById('ssLoading');
+  const unavail = document.getElementById('ssUnavailable');
+  loading.classList.remove('hidden');
+  unavail.classList.add('hidden');
+  if (!force && state.sigData && Object.keys(state.sigData).length > 0) { renderSignalList(); loading.classList.add('hidden'); return; }
+  const results = {};
+  let any = false;
+  for (let i = 0; i < SIGNAL_UNIVERSE.length; i += 6) {
+    const batch = SIGNAL_UNIVERSE.slice(i, i + 6);
+    await Promise.all(batch.map(async (u) => {
+      try {
+        const candles = await fetchYahooQuoteData(u.s, '1d', '6mo');
+        if (candles && candles.length >= 15) {
+          const closes = candles.map(c => c.close);
+          const vols = candles.map(c => c.volume);
+          const last = closes[closes.length - 1], prev = closes[closes.length - 2];
+          const avg = (vols.slice(-6, -1).reduce((a, b) => a + (b || 0), 0) / 5) || 1;
+          results[u.s] = {
+            pick: u, price: last, chg: ((last / prev) - 1) * 100,
+            volRatio: (vols[vols.length - 1] || 0) / avg,
+            rsi: rsiFromCloses(closes)
+          };
+          any = true;
+        }
+      } catch (e) { /* skip symbol */ }
+    }));
+  }
+  state.sigData = results;
+  loading.classList.add('hidden');
+  if (!any) unavail.classList.remove('hidden');
+  renderSignalList();
+}
+
+function setSignalTab(mode) {
+  signalTab = mode;
+  const bought = document.getElementById('ssTabBought');
+  const oversold = document.getElementById('ssTabOversold');
+  bought.className = 'key-press text-xs px-3 py-1.5 rounded-lg transition-colors ' + (mode === 'bought' ? 'bg-purple-glow/20 text-purple-light font-semibold' : 'bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50');
+  oversold.className = 'key-press text-xs px-3 py-1.5 rounded-lg transition-colors ' + (mode === 'oversold' ? 'bg-purple-glow/20 text-purple-light font-semibold' : 'bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50');
+  renderSignalList();
+}
+
+function sigCard(d, ranking) {
+  const u = d.pick;
+  const up = d.chg >= 0;
+  const volSurge = d.volRatio >= 1.5;
+  return '<div onclick="openSignalChart(' + "'" + u.s + "'" + ')" class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-3 cursor-pointer hover:border-purple-glow/50 hover:bg-keyboard-black/60 transition-colors">' +
+    '<div class="flex items-center justify-between gap-2">' +
+      '<div class="min-w-0"><p class="text-sm font-bold text-keyboard-light truncate">' + escapeHtml(u.n) + ' <span class="text-[10px] font-normal text-keyboard-silver/50">' + u.x + '</span></p>' +
+      '<p class="text-[10px] text-keyboard-silver/50">' + u.sect + '</p></div>' +
+      '<div class="text-right shrink-0">' +
+        '<p class="text-sm font-semibold tabular-nums">' + (u.x === 'US' ? '$ ' : '₹ ') + nfmt(d.price) + '</p>' +
+        '<p class="text-[11px] font-bold ' + (up ? 'text-green-400' : 'text-red-400') + '">' + (up ? '▲' : '▼') + ' ' + formatPercent(d.chg) + (volSurge ? ' <span class="text-purple-light">· Vol ' + d.volRatio.toFixed(1) + '×</span>' : '') + '</p>' +
+      '</div>' +
+    '</div>' +
+    '<div class="flex gap-3 mt-2 text-[10px] text-keyboard-silver/50">' +
+      '<span>RSI ' + (d.rsi != null ? Math.round(d.rsi) : '—') + '</span>' +
+      '<span class="text-keyboard-silver/30">·</span>' +
+      '<span class="truncate">' + ranking + '</span>' +
+    '</div></div>';
+}
+
+function renderSignalList() {
+  const list = document.getElementById('ssList');
+  const entries = Object.values(state.sigData || {});
+  const usa = entries.filter(d => d.pick.x === 'US');
+  const nseLive = entries.filter(d => d.pick.x === 'NSE');
+  const nseAll = SIGNAL_UNIVERSE.filter(u => u.x === 'NSE');
+
+  if (signalTab === 'bought') {
+    const ranked = usa.slice().sort((a, b) => (b.chg + (b.volRatio - 1) * 100) - (a.chg + (a.volRatio - 1) * 100)).slice(0, 12);
+    let html = ranked.map((d, i) => sigCard(d, 'Rank #' + (i + 1) + ' by gain + volume surge')).join('');
+    if (!html) html = '<div class="md:col-span-2 rounded-lg bg-keyboard-black/40 border border-keyboard-grey/20 p-6 text-center text-xs text-keyboard-silver/50">Waiting for live quotes… refresh to recompute.</div>';
+    html += nseLive.length ? nseLive.map(d => sigCard(d, 'NSE pick — ranking gated without paid NSE feed')).join('') : '';
+    html += nseAll.map(u => (nseLive.find(d => d.pick.s === u.s)) ? '' : '<div class="rounded-xl bg-keyboard-black/20 border border-keyboard-grey/10 p-3 flex items-center justify-between"><div><p class="text-sm font-semibold text-keyboard-silver/60">' + escapeHtml(u.n) + ' <span class="text-[10px] font-normal text-keyboard-silver/40">NSE</span></p><p class="text-[10px] text-keyboard-silver/40">' + u.sect + '</p></div><span class="text-[10px] text-red-300/70">No live feed — free sources gate NSE/BSE</span></div>').join('');
+    list.innerHTML = html;
+  } else {
+    const opted = usa.filter(d => d.rsi != null && d.rsi <= 45).sort((a, b) => a.rsi - b.rsi);
+    let html = opted.map(d => sigCard(d, 'RSI ' + Math.round(d.rsi) + ' — pressed below momentum threshold')).join('');
+    if (!html) html = '<div class="md:col-span-2 rounded-lg bg-keyboard-black/40 border border-keyboard-grey/20 p-6 text-center text-xs text-keyboard-silver/50">No live picks are oversold (RSI ≤ 45) right now — markets look constructive. Check back later.</div>';
+    list.innerHTML = html;
+  }
+}
+
+function openSignalChart(sym) {
+  const pick = SIGNAL_UNIVERSE.find(u => u.s === sym);
+  if (!pick) return;
+  document.getElementById('ssModalTitle').textContent = pick.n + ' (' + pick.s + ')';
+  document.getElementById('ssModalSub').textContent = pick.sect + ' · live daily candles · hover a candle for OHLC · markers highlight detected patterns';
+  document.getElementById('ssModal').classList.remove('hidden');
+  loadSignalChart(pick);
+}
+
+function closeSignalChart() {
+  document.getElementById('ssModal').classList.add('hidden');
+  if (signalChartInst) { try { signalChartInst.remove(); } catch (e) {} signalChartInst = null; }
+}
+
+async function loadSignalChart(pick) {
+  const box = document.getElementById('ssChart');
+  const empty = document.getElementById('ssChartEmpty');
+  const pat = document.getElementById('ssPattern');
+  if (signalChartInst) { try { signalChartInst.remove(); } catch (e) {} signalChartInst = null; }
+  empty.classList.add('hidden');
+  pat.innerHTML = '';
+  try {
+    const candles = await fetchYahooQuoteData(pick.s, '1d', '6mo');
+    if (!candles || candles.length < 5) { empty.classList.remove('hidden'); return; }
+    signalChartInst = LightweightCharts.createChart(box, {
+      width: box.clientWidth || 640, height: 320,
+      layout: { background: { type: 'solid', color: '#1a1a1a' }, textColor: '#c0c0c0', fontSize: 11 },
+      grid: { vertLines: { color: 'rgba(192,192,192,0.05)' }, horzLines: { color: 'rgba(192,192,192,0.05)' } },
+      rightPriceScale: { borderColor: 'rgba(192,192,192,0.1)' },
+      timeScale: { borderColor: 'rgba(192,192,192,0.1)', timeVisible: true, secondsVisible: false }
+    });
+    const series = signalChartInst.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderUpColor: '#22c55e', borderDownColor: '#ef4444', wickUpColor: '#22c55e', wickDownColor: '#ef4444' });
+    series.setData(candles.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close })));
+    const vol = signalChartInst.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: '', scaleMargins: { top: 0.85, bottom: 0 } });
+    vol.setData(candles.map(c => ({ time: c.time, value: c.volume, color: c.close >= c.open ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)' })));
+
+    const pats = CandlePatterns.detect(candles) || [];
+    const recent = pats.filter(p => p.index >= candles.length - 30);
+    series.setMarkers(recent.map(p => {
+      const dir = candles[p.index].close >= candles[p.index].open;
+      return {
+        time: candles[p.index].time,
+        position: p.type === 'bullish' ? 'belowBar' : 'aboveBar',
+        color: p.type === 'bullish' ? '#22c55e' : p.type === 'bearish' ? '#ef4444' : '#c0c0c0',
+        shape: p.type === 'neutral' ? 'circle' : (p.type === 'bullish' ? 'arrowUp' : 'arrowDown'),
+        text: p.name
+      };
+    }));
+
+    const lastC = candles[candles.length - 1];
+    const lastPat = pats.filter(p => p.index === candles.length - 1)[0];
+    pat.innerHTML =
+      (lastPat
+        ? '<div class="rounded-lg bg-purple-glow/10 border border-purple-glow/30 p-3 text-xs text-keyboard-light"><span class="font-bold text-purple-light">Latest candle — ' + lastPat.name + '</span> · ' + escapeHtml(lastPat.description) + '</div>'
+        : '<div class="rounded-lg bg-keyboard-black/40 border border-keyboard-grey/20 p-3 text-[11px] text-keyboard-silver/60">Latest candle shows no major reversal pattern — it is <span class="text-keyboard-light font-semibold">' + (lastC.close >= lastC.open ? 'bullish' : 'bearish') + '</span> but unremarkable.</div>') +
+      (pats.length ? '<div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">' + pats.slice(0, 6).map(p => '<div class="rounded-lg bg-keyboard-black/40 border border-keyboard-grey/20 p-2 text-[10px] text-keyboard-silver/60"><span class="font-semibold text-' + (p.type === 'bullish' ? 'green-400' : p.type === 'bearish' ? 'red-400' : 'keyboard-light') + '">' + p.name + '</span><br>' + escapeHtml((p.description || '').split(' — ')[0]) + '</div>').join('') + '</div>' : '');
+  } catch (e) {
+    empty.classList.remove('hidden');
+  }
+}
+
+// paper topic default + clock ticking
+state.paperTopic = 'markets';
+state.sigData = {};
+renderClock();
+setInterval(renderClock, 1000);
+
+// ============================================================
+// ABCD EXPERT PANEL — 25 Indian market masters, live-scored
+// ============================================================
+const EXPERT_ROSTER = [
+  { n: 'Raamdeo Agrawal',  lens: 'Growth at reasonable price · market cycles', style: 'growth' },
+  { n: 'Saurabh Mukherjea',lens: 'Coffee Can — consistent compounders',         style: 'quality' },
+  { n: 'S. Naren',         lens: 'Contrarian cycles · asset allocation',        style: 'contrarian' },
+  { n: 'Porinju Veliyath', lens: 'Small-cap value bargains',                    style: 'contrarian' },
+  { n: 'Prashant Jain',    lens: 'Simple businesses, low leverage, long hold',  style: 'quality' },
+  { n: 'Ramesh Damani',    lens: 'Moats & wisdom investing',                    style: 'quality' },
+  { n: 'Samir Arora',      lens: 'Growth with global context',                  style: 'growth' },
+  { n: 'Vinit Sambre',     lens: 'Pharma & healthcare specialty',               style: 'sector' },
+  { n: 'Hiren Ved',        lens: 'Quantamental growth',                         style: 'growth' },
+  { n: 'Ridham Desai',     lens: 'Macro strategy — markets vs economy',         style: 'macro' },
+  { n: 'Gunwani',          lens: 'Emotion-free momentum sweeps',                style: 'momentum' },
+  { n: 'Prakash',          lens: 'Trend & relative-strength',                   style: 'momentum' },
+  { n: 'Kela',             lens: 'Volume-price confirmation',                   style: 'momentum' },
+  { n: 'Sekhar',           lens: 'Macro liquidity & flows',                     style: 'macro' },
+  { n: 'Surana',           lens: 'Rate-cycle positioning',                      style: 'macro' },
+  { n: 'Shah',             lens: 'Sector rotation & pharma watchdog',           style: 'sector' },
+  { n: 'Agarwal',          lens: 'Deep-value turnaround hunting',               style: 'contrarian' },
+  { n: 'Paharia',          lens: 'Distressed asset bargainista',                style: 'contrarian' },
+  { n: 'Ranganathan',      lens: 'Growth with a valuation brake',               style: 'growth' },
+  { n: 'Damani',           lens: 'Franchise quality, low turnover',             style: 'quality' },
+  { n: 'Panel seat 21',    lens: 'Momentum & breakouts',                        style: 'momentum' },
+  { n: 'Panel seat 22',    lens: 'Momentum with drawdown guard',                style: 'momentum' },
+  { n: 'Panel seat 23',    lens: 'Macro breadth & risk-on/off',                 style: 'macro' },
+  { n: 'Panel seat 24',    lens: 'Healthcare & innovation specialist',          style: 'sector' },
+  { n: 'Panel seat 25',    lens: 'Compounder quality reviewer',                 style: 'quality' }
+];
+const EP_STYLES = {
+  quality:    { formula: '0.5×consistency + 0.5×moat',                  note: '≥62 BUY · ≥48 HOLD · else AVOID' },
+  growth:     { formula: '0.6×growth + 0.25×innovation + 0.15×moat',   note: '≥62 & MOS > −18% BUY · ≥48 HOLD' },
+  contrarian: { formula: 'Margin of Safety (MOS)',                     note: '≥10 BUY · ≥−5 HOLD · else AVOID' },
+  momentum:   { formula: 'Price vs 50-day anchor',                     note: '>2% BUY · >−8% HOLD · else AVOID' },
+  macro:      { formula: 'Market breadth (advancers vs decliners)',    note: 'Bullish breadth = HOLD · else AVOID' },
+  sector:     { formula: 'MOS with pharma/health preference',          note: 'MOS > −10 BUY if pharma · else HOLD' }
+};
+const EP_CYCLICAL = { 'Banking':75, 'Autos & EV':72, 'Energy':66, 'Oil & Gas':62, 'Renewables':62, 'E-commerce':52, 'Semiconductors':55, 'Technology':42, 'IT':38, 'FMCG':22, 'Healthcare':25, 'Consumer':30, 'Payments':35, 'Energy & Telecom':58 };
+const EP_CAT_COLOR = { A: 'bg-green-500/15 text-green-400 border-green-500/30', B: 'bg-purple-glow/20 text-purple-light border-purple-glow/40', C: 'bg-amber-500/15 text-amber-400 border-amber-500/30', D: 'bg-red-500/15 text-red-300 border-red-500/30' };
+
+function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+
+function panelInputs(candles, pick) {
+  const closes = candles.map(c => c.close);
+  const n = closes.length;
+  if (n < 15) return null;
+  const weekly = [];
+  for (let i = 0; i < n; i += 5) weekly.push(closes[i]);
+  let pos = 0;
+  for (let i = 1; i < weekly.length; i++) if (weekly[i] > weekly[i - 1]) pos++;
+  const consistency = weekly.length > 1 ? (pos / (weekly.length - 1)) * 100 : 50;
+  const ychg = ((closes[n - 1] / closes[0]) - 1) * 100;
+  const growth = clamp(((ychg + 40) / 120) * 100, 0, 100);
+  const rets = candles.map((c, i) => i ? (c.close / closes[i - 1] - 1) : 0);
+  const avgAtr = (rets.reduce((a, b) => a + Math.abs(b), 0) / rets.length) * 100;
+  const stability = clamp(100 - avgAtr * 8, 0, 100);
+  const sector = pick.sect || '';
+  const defensive = /FMCG|Healthcare|Consumer|IT|Payments/.test(sector);
+  const moat = clamp(stability * 0.7 + (defensive ? 30 : 12), 0, 100);
+  const innovation = /Technology|Semiconductor|EV|Renewables|E-commerce/.test(sector) ? 28 : 12;
+  const cyclical = EP_CYCLICAL[sector] != null ? EP_CYCLICAL[sector] : 45;
+  const avg12 = closes.reduce((a, b) => a + b, 0) / n;
+  const fair = avg12 * (1 + growth / 300);
+  const mos = clamp((fair / closes[n - 1] - 1) * 100, -50, 50);
+  const anchor = closes.slice(Math.max(0, n - 50)).reduce((a, b) => a + b, 0) / Math.min(50, n);
+  const momentum = (closes[n - 1] / anchor - 1) * 100;
+  const pharma = /Healthcare|Pharma/.test(sector);
+  return { consistency, moat, growth, innovation, cyclical, mos, momentum, pharma };
+}
+
+function styleVote(style, in_, breadth) {
+  switch (style) {
+    case 'quality': {
+      const s = 0.5 * in_.consistency + 0.5 * in_.moat;
+      return { score: s, verdict: s >= 62 ? 'BUY' : s >= 48 ? 'HOLD' : 'AVOID' };
+    }
+    case 'growth': {
+      const s = 0.6 * in_.growth + 0.25 * in_.innovation + 0.15 * in_.moat;
+      return { score: s, verdict: (s >= 62 && in_.mos > -18) ? 'BUY' : s >= 48 ? 'HOLD' : 'AVOID' };
+    }
+    case 'contrarian': return { score: in_.mos, verdict: in_.mos >= 10 ? 'BUY' : in_.mos >= -5 ? 'HOLD' : 'AVOID' };
+    case 'momentum': return { score: in_.momentum, verdict: in_.momentum > 2 ? 'BUY' : in_.momentum > -8 ? 'HOLD' : 'AVOID' };
+    case 'macro': return { score: breadth >= 0.5 ? 60 : 30, verdict: breadth >= 0.5 ? 'HOLD' : 'AVOID' };
+    case 'sector': return { score: in_.mos + (in_.pharma ? 10 : 0), verdict: (in_.pharma && in_.mos > -10) ? 'BUY' : 'HOLD' };
+    default: return { score: 0, verdict: 'HOLD' };
+  }
+}
+
+function abcCategory(in_) {
+  if (in_.consistency < 48 && in_.mos >= 15) return { c: 'D', label: 'Revival Bet', advice: 'Satellite bet only (≤5% of portfolio) — wide stop-loss. High payoff if fundamentals turn, fragile meanwhile.' };
+  if (in_.cyclical >= 58) return { c: 'C', label: 'Cyclical Play', advice: 'Cycle trade — accumulate at lows, sell into strength. Don\u2019t be married to it across cycles.' };
+  if (in_.consistency >= 66 && in_.moat >= 60 && in_.cyclical <= 48) return { c: 'A', label: 'Established Compounder', advice: 'Core compounder — buy dips via SIP, hold 5+ years. Boring is the point.' };
+  return { c: 'B', label: 'Growth Engine', advice: 'Growth position — size at most 10% of the portfolio, review quarterly, cut when the story breaks.' };
+}
+
+async function loadExpertPanel(force) {
+  const list = document.getElementById('epList');
+  const loading = document.getElementById('epLoading');
+  const unavail = document.getElementById('epUnavailable');
+  loading.classList.remove('hidden');
+  unavail.classList.add('hidden');
+  const cached = getCached('expertPanel', 120000);
+  if (cached && !force) { renderExpertPanel(cached); loading.classList.add('hidden'); return; }
+
+  const picks = SIGNAL_UNIVERSE.filter(u => u.x === 'US');
+  const scored = [];
+  for (let i = 0; i < picks.length; i += 6) {
+    const batch = picks.slice(i, i + 6);
+    await Promise.all(batch.map(async (u) => {
+      try {
+        const candles = await fetchYahooQuoteData(u.s, '1d', '1y');
+        const inp = candles ? panelInputs(candles, u) : null;
+        if (inp) scored.push({ pick: u, inputs: inp, price: candles[candles.length - 1].close });
+      } catch (e) { /* skip */ }
+    }));
+  }
+  if (!scored.length) { loading.classList.add('hidden'); unavail.classList.remove('hidden'); return; }
+
+  const advancers = scored.filter(s => s.inputs.momentum > 0).length;
+  const breadth = advancers / scored.length;
+  scored.forEach(s => {
+    const votes = {};
+    EXPERT_ROSTER.forEach(e => {
+      const v = styleVote(e.style, s.inputs, breadth);
+      votes[v.verdict] = (votes[v.verdict] || 0) + 1;
+      s.panels = EXPERT_ROSTER.map(ex => ({ n: ex.n, lens: ex.lens, style: ex.style, vote: styleVote(ex.style, s.inputs, breadth) }));
+    });
+    s.votes = votes;
+    s.breadth = breadth;
+    s.category = abcCategory(s.inputs);
+    const styleScores = {};
+    ['quality', 'growth', 'contrarian', 'momentum', 'macro', 'sector'].forEach(st => {
+      const sample = styleVote(st, s.inputs, breadth);
+      styleScores[st] = sample.score;
+    });
+    s.styleScores = styleScores;
+  });
+  const data = { scored, breadth, asOf: Date.now() };
+  setCache('expertPanel', data);
+  loading.classList.add('hidden');
+  renderExpertPanel(data);
+}
+
+function renderExpertPanel(data) {
+  const list = document.getElementById('epList');
+  const legend = document.getElementById('epLegend');
+  legend.innerHTML = ['BUY', 'HOLD', 'AVOID'].map(v =>
+    '<span class="text-[10px] font-bold px-2 py-1 rounded ' + (v === 'BUY' ? 'bg-green-500/15 text-green-400' : v === 'HOLD' ? 'bg-amber-500/15 text-amber-400' : 'bg-red-500/15 text-red-400') + '">' + v + '</span>'
+  ).join('') + '<span class="text-[10px] text-keyboard-silver/50 self-center">consensus across all 25 experts</span>';
+
+  const sorted = data.scored.slice().sort((a, b) => 'ABCD'.indexOf(a.category.c) - 'ABCD'.indexOf(b.category.c) || b.inputs.consistency - a.inputs.consistency);
+
+  list.innerHTML = sorted.map(s => {
+    const cat = s.category;
+    const iv = s.inputs;
+    const detail = '<details class="mt-3"><summary class="cursor-pointer text-[10px] text-purple-light select-none">The 25 lenses in full — tap to expand</summary>' +
+      '<div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-1.5">' +
+      [['yield of consistency', 'consistency'], ['moat / stability', 'moat'], ['growth', 'growth'], ['cyclical exposure', 'cyclical'], ['margin of safety', 'mos'], ['momentum vs anchor', 'momentum']]
+        .map(k => '<div class="rounded bg-keyboard-black/30 px-2 py-1.5 flex justify-between text-[10px] text-keyboard-silver/60"><span>' + k[0] + '</span><span class="font-semibold tabular-nums text-keyboard-silver/80">' + (k[1] === 'mos' ? (+iv[k[1]]).toFixed(1) + '%' : Math.round(iv[k[1]])) + '</span></div>').join('') +
+      '</div>' +
+      '<div class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-1.5">' +
+      Object.entries(EP_STYLES).map(([st, meta]) => {
+        const score = s.styleScores[st];
+        return '<div class="rounded bg-keyboard-black/30 px-2 py-1.5 text-[10px]"><p class="text-keyboard-silver/50 mb-0.5"><span class="font-semibold text-keyboard-silver/70">' + st + '</span> · ' + meta.formula + '</p><p class="text-keyboard-silver/90 tabular-nums">score ' + (typeof score === 'number' ? score.toFixed(1) : score) + ' — ' + styleVote(st, iv, s.breadth).verdict + '</p></div>';
+      }).join('') +
+      '</div>' +
+      '<div class="mt-2 max-h-40 overflow-y-auto space-y-1">' +
+      s.panels.map(p => '<div class="flex items-center justify-between px-2 py-1 rounded bg-keyboard-black/20 text-[10px]"><span class="text-keyboard-silver/70"><span class="font-semibold text-keyboard-light">' + p.n + '</span> · ' + p.lens + '</span><span class="font-bold ' + (p.vote.verdict === 'BUY' ? 'text-green-400' : p.vote.verdict === 'HOLD' ? 'text-amber-400' : 'text-red-400') + '">' + p.vote.verdict + '</span></div>').join('') +
+      '</div></details>';
+
+    const voteBar = '[BUY ' + (s.votes.BUY || 0) + ' · HOLD ' + (s.votes.HOLD || 0) + ' · AVOID ' + (s.votes.AVOID || 0) + ']';
+    return '<div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4 hover:border-purple-glow/40 transition-colors">' +
+      '<div class="flex items-center justify-between flex-wrap gap-2">' +
+        '<div class="flex items-center gap-3"><span class="rounded-lg border px-2.5 py-1 text-sm font-black ' + EP_CAT_COLOR[cat.c] + '">' + cat.c + '</span>' +
+        '<div><p class="text-sm font-bold text-keyboard-light">' + escapeHtml(s.pick.n) + ' <span class="text-[10px] font-normal text-keyboard-silver/50">' + s.pick.s + ' · ' + s.pick.sect + '</span></p>' +
+        '<p class="text-[10px] text-keyboard-silver/50">' + cat.label + ' — <span class="text-keyboard-silver/80">' + voteBar + '</span></p></div></div>' +
+        '<div class="flex gap-1.5 text-[9px] font-bold">' + ['A', 'B', 'C', 'D'].map(c => '<span class="px-1.5 py-0.5 rounded ' + (s.category.c === c ? EP_CAT_COLOR[c] : 'text-keyboard-silver/30') + '">' + c + '</span>').join('') + '</div>' +
+      '</div>' +
+      '<div class="flex flex-wrap gap-2 mt-3 text-[10px] text-keyboard-silver/60"><span>Consistency <b class="text-keyboard-light tabular-nums">' + Math.round(iv.consistency) + '</b></span><span>·</span><span>Moat <b class="text-keyboard-light tabular-nums">' + Math.round(iv.moat) + '</b></span><span>·</span><span>Growth <b class="text-keyboard-light tabular-nums">' + Math.round(iv.growth) + '</b></span><span>·</span><span>Cyclical <b class="text-keyboard-light tabular-nums">' + Math.round(iv.cyclical) + '</b></span><span>·</span><span>MOS <b class="' + (iv.mos >= 0 ? 'text-green-400' : 'text-red-400') + ' tabular-nums">' + iv.mos.toFixed(1) + '%</b></span></div>' +
+      '<div class="mt-2 rounded-lg bg-keyboard-black/30 border border-keyboard-grey/15 p-2 text-[10px] text-keyboard-silver/70">' + cat.advice + '</div>' +
+      detail + '</div>';
+  }).join('') +
+  '<p class="text-[10px] text-keyboard-silver/40 pt-2">Market breadth for macro lens: ' + Math.round(data.breadth * 100) + '% advancers — ' + (data.breadth >= 0.5 ? 'bullish tone (macro = HOLD)' : 'risk-off tone (macro = AVOID)') + '. Scores are a transparent education model from live prices, not advice.</p>';
+}
+
+// ============================================================
+// CRYPTO GUIDE — live BTC ticker
+// ============================================================
+async function loadCrypto() {
+  const ticker = document.getElementById('btcTicker');
+  if (!ticker) return;
+  const update = async () => {
+    try {
+      const d = await fetchTerminalFeedEndpoint('btc-price');
+      const b = d && d.data;
+      if (b && b.price_usd) {
+        const priceEl = ticker.querySelector('.text-base');
+        if (priceEl) priceEl.textContent = '$ ' + Number(b.price_usd).toLocaleString('en-US', { maximumFractionDigits: 0 });
+        const chgEl = document.getElementById('btcChg');
+        const chg = b.change_24h_percent || 0;
+        if (chgEl) {
+          chgEl.textContent = (chg >= 0 ? '▲ ' : '▼ ') + formatPercent(chg) + ' 24h';
+          chgEl.className = 'text-[10px] font-bold ' + (chg >= 0 ? 'text-green-400' : 'text-red-400');
+        }
+      }
+    } catch (e) { /* keep last value */ }
+  };
+  await update();
+  if (!state.btcTimer) {
+    state.btcTimer = setInterval(() => { if (state.section === 'crypto') update(); }, 60000);
+  }
 }
 
 // ============================================================

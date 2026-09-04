@@ -14,6 +14,32 @@ const ALLOWED_INTERVALS = new Set(['1m', '2m', '5m', '15m', '30m', '60m', '1h', 
 
 const RANGE_DAYS = { '1d': 1, '5d': 5, '1mo': 30, '3mo': 90, '6mo': 180, '1y': 365, '2y': 730, '5y': 1825, 'max': 9130 };
 
+const NEWS_FEEDS = {
+  markets: [
+    { src: 'google:stock market today',               name: 'Google News' },
+    { src: 'https://economictimes.indiatimes.com/rssfeedstopstories.cms', name: 'Economic Times' }
+  ],
+  ideas: [
+    { src: 'https://feeds.content.dowjones.io/public/rss/mw_topstories', name: 'MarketWatch' },
+    { src: 'https://www.investing.com/rss/news_25.rss',                  name: 'Investing.com' }
+  ],
+  gold: [
+    { src: 'google:gold price',                        name: 'Google News' },
+    { src: 'https://economictimes.indiatimes.com/rssfeedstopstories.cms', name: 'Economic Times' },
+    { src: 'https://www.cnbc.com/id/100003114/device/rss/rss.html',       name: 'CNBC' }
+  ],
+  wallst: [
+    { src: 'https://www.cnbc.com/id/100003114/device/rss/rss.html',       name: 'CNBC' },
+    { src: 'https://feeds.content.dowjones.io/public/rss/mw_topstories',  name: 'MarketWatch' }
+  ]
+};
+const NEWS_CURATED = {
+  markets: ['Fed signals rate path stability as inflation cools', 'Nifty holds support; FII flows turn positive', 'Big tech earnings beat estimates, AI capex continues'],
+  ideas: ['Semiconductor orders rebound ahead of holidays', 'Banks screen attractive as credit growth picks up', 'Quality compounders on SIP-watch after the pullback'],
+  gold: ['Gold nears record high as geopolitical risks persist', 'Oil prices steady as global demand outlook improves', 'Treasury yields drift lower on soft jobs data'],
+  wallst: ['Wall Street weighs earnings vs macro data', 'S&P 500 holds range as yields ease', 'Nasdaq leads on AI-driver momentum']
+};
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Server-side response cache (per warm instance) so alert polling every 20s doesn't
@@ -190,6 +216,8 @@ export default async (event, context) => {
   let range = params.range || '5d';
   if (!/^[a-zA-Z0-9]+$/.test(range)) range = '5d';
 
+  if (params.mode === 'news') return await handleNews(params.topic || 'markets');
+
   if (!symbol) return corsResponse(JSON.stringify({ error: 'symbol is required' }), 400);
   if (!/^[A-Za-z0-9.\-=]+$/.test(symbol)) return corsResponse(JSON.stringify({ error: 'invalid symbol' }), 400);
 
@@ -250,4 +278,61 @@ function corsResponse(body, statusCode = 200, extraHeaders = {}) {
     ...extraHeaders
   };
   return new Response(body, { status: statusCode, headers });
+}
+
+// ---- News (Google News RSS + reliable business feeds, server-side to dodge CORS) ----
+function buildGoogleNewsUrl(q) {
+  const qq = encodeURIComponent(q).replace(/%20/g, '+');
+  return `https://news.google.com/rss/search?q=${qq}&hl=en-US&gl=US&ceid=US:en`;
+}
+
+async function fetchAndParseRSS(url) {
+  const res = await fetch(url, { headers: { 'User-Agent': UA } });
+  if (!res.ok) throw new Error('rss-upstream-' + res.status);
+  const xml = await res.text();
+  const items = [];
+  const itemRe = /<item>([\s\S]*?)<\/item>/g;
+  let m;
+  while ((m = itemRe.exec(xml))) {
+    const block = m[1];
+    const tag = (name) => {
+      const r = new RegExp(`<${name}(?:[^>]*)>([\\s\\S]*?)<\\/${name}>`, 'i').exec(block);
+      return r ? r[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+    };
+    const title = tag('title');
+    const link = tag('link');
+    const pubDate = tag('pubDate');
+    const source = (tag('source') || '').trim();
+    if (title) {
+      let pretty = source;
+      if (!pretty && link) {
+        try { pretty = new URL(link).hostname.replace(/^www\./, ''); } catch (e) { pretty = ''; }
+      }
+      items.push({ title, link, pubDate, source: pretty });
+    }
+    if (items.length >= 10) break;
+  }
+  return items;
+}
+
+async function handleNews(topic) {
+  const feeds = NEWS_FEEDS[topic] || NEWS_FEEDS.markets;
+  const items = [];
+  for (const f of feeds) {
+    try {
+      const url = f.src.startsWith('google:') ? buildGoogleNewsUrl(f.src.slice(7)) : f.src;
+      const got = await fetchAndParseRSS(url);
+      for (const it of got) {
+        if (!items.some(y => y.title === it.title)) items.push({ ...it });
+        if (items.length >= 12) break;
+      }
+    } catch (e) { /* next source */ }
+    if (items.length >= 12) break;
+  }
+
+  if (!items.length) {
+    (NEWS_CURATED[topic] || NEWS_CURATED.markets).forEach(t => items.push({ title: t, link: '', pubDate: '', source: 'curated offline' }));
+  }
+
+  return corsResponse(JSON.stringify({ topic, count: items.length, items }), 200, { 'Cache-Control': 'public, max-age=120' });
 }
