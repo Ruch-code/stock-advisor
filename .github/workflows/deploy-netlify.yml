@@ -8,21 +8,20 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Trigger Netlify deploy
+    name: Deploy to Netlify (with functions)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy to Netlify
-        uses: nwtgck/actions-netlify@v3.0
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          publish-dir: '.'
-          functions: netlify/functions
-          production-branch: main
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: "Auto-deploy from GitHub Actions"
-          enable-commit-comment: false
+          node-version: 20
+
+      - name: Install Netlify CLI
+        run: npm install -g netlify-cli
+
+      - name: Deploy to Netlify (production)
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        timeout-minutes: 5
+        run: netlify deploy --prod --dir=. --site 60cc8b1c-5226-40ab-9ce3-78cedb5f6d62 --message "Auto-deploy from GitHub Actions"
