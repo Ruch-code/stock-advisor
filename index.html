@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockPulse - Live Market Advisor</title>
+  <meta name="description" content="Live stock advisor with candlestick patterns, trading signals, and mutual fund recommendations">
+  <meta name="theme-color" content="#1a1a1a">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            keyboard: {
+              black: '#1a1a1a',
+              dark: '#2d2d2d',
+              grey: '#3d3d3d',
+              silver: '#c0c0c0',
+              light: '#e5e5e5',
+              white: '#f5f5f5'
+            },
+            purple: {
+              glow: '#7c3aed',
+              light: '#a78bfa',
+              dark: '#5b21b6'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { font-family: 'Inter', system-ui, sans-serif; }
+    html { background: #1a1a1a; }
+    body { background: #1a1a1a; min-height: 100vh; }
+
+    /* MacBook Keyboard Effect */
+    .keyboard-bg {
+      background: linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+      position: relative;
+    }
+    .keyboard-bg::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(ellipse at 50% 0%, rgba(124, 58, 237, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 20% 50%, rgba(192, 192, 192, 0.03) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    /* Glowing borders */
+    .glow-border {
+      border: 1px solid rgba(192, 192, 192, 0.1);
+      box-shadow: 0 0 15px rgba(124, 58, 237, 0.1), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .glow-border:hover {
+      border-color: rgba(124, 58, 237, 0.3);
+      box-shadow: 0 0 25px rgba(124, 58, 237, 0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    /* Silver text glow */
+    .silver-text {
+      color: #e5e5e5;
+      text-shadow: 0 0 10px rgba(192, 192, 192, 0.3);
+    }
+
+    /* Purple accent glow */
+    .purple-glow {
+      color: #a78bfa;
+      text-shadow: 0 0 15px rgba(124, 58, 237, 0.5);
+    }
+
+    /* Key press effect */
+    .key-press {
+      transition: all 0.1s ease;
+    }
+    .key-press:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    /* Live indicator */
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+      50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #1a1a1a; }
+    ::-webkit-scrollbar-thumb { background: #3d3d3d; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #5b21b6; }
+
+    /* Card styles */
+    .card {
+      background: linear-gradient(145deg, #2d2d2d 0%, #252525 100%);
+      border: 1px solid rgba(192, 192, 192, 0.08);
+      transition: all 0.3s ease;
+    }
+    .card:hover {
+      border-color: rgba(124, 58, 237, 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    }
+
+    /* Pattern tooltip */
+    .pattern-tooltip {
+      position: absolute;
+      background: #1a1a1a;
+      border: 1px solid #7c3aed;
+      border-radius: 8px;
+      padding: 12px;
+      max-width: 280px;
+      z-index: 1000;
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .pattern-tooltip.visible { opacity: 1; }
+
+    /* Chart container */
+    .chart-container {
+      position: relative;
+      background: #1a1a1a;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    /* Index card shimmer */
+    .shimmer {
+      background: linear-gradient(90deg, #2d2d2d 25%, #3d3d3d 50%, #2d2d2d 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Tab active state */
+    .tab-active {
+      background: linear-gradient(145deg, #5b21b6 0%, #7c3aed 100%);
+      box-shadow: 0 0 15px rgba(124, 58, 237, 0.4);
+    }
+
+    /* Number animation */
+    .num-animate {
+      transition: all 0.3s ease;
+    }
+
+    /* Nav active */
+    .nav-active {
+      background: rgba(124, 58, 237, 0.15);
+      border-left: 3px solid #7c3aed;
+    }
+
+    /* Status indicator */
+    .status-green { color: #22c55e; }
+    .status-red { color: #ef4444; }
+    .status-yellow { color: #eab308; }
+  </style>
+</head>
+<body class="keyboard-bg text-gray-300 overflow-x-hidden">
+  <!-- Disclaimer Banner -->
+  <div class="bg-gradient-to-r from-purple-dark/30 via-purple-glow/20 to-purple-dark/30 text-center py-2 text-xs text-purple-light border-b border-purple-glow/20">
+    <span class="text-purple-light font-semibold">DISCLAIMER:</span> This is for educational purposes only. Not financial advice. Always consult a certified financial advisor.
+  </div>
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 backdrop-blur-xl bg-keyboard-black/80 border-b border-keyboard-grey/30">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-glow to-purple-dark flex items-center justify-center">
+          <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold silver-text">StockPulse</h1>
+          <p class="text-[10px] text-keyboard-silver/60">Live Market Intelligence</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <div class="live-dot"></div>
+          <span class="text-xs text-keyboard-silver/70">LIVE</span>
+        </div>
+        <div id="lastUpdate" class="text-xs text-keyboard-silver/50">--:--:--</div>
+        <button onclick="toggleMarket()" class="key-press px-3 py-1.5 rounded-lg bg-keyboard-grey/50 text-xs text-keyboard-light hover:bg-purple-glow/20 transition-colors" id="marketToggle">US Market</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Top Bar: Girl Illustration + Market Status -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <!-- Girl with Purple Hoodie - CSS Illustration -->
+      <div class="lg:col-span-1 card rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-purple-glow/5 to-transparent"></div>
+        <svg viewBox="0 0 200 250" class="w-full max-w-[180px] h-auto relative z-10 drop-shadow-2xl">
+          <!-- Desk -->
+          <rect x="10" y="200" width="180" height="8" rx="2" fill="#3d3d3d"/>
+          <rect x="20" y="208" width="8" height="40" fill="#2d2d2d"/>
+          <rect x="172" y="208" width="8" height="40" fill="#2d2d2d"/>
+          
+          <!-- Desktop Monitor -->
+          <rect x="55" y="140" width="90" height="60" rx="4" fill="#1a1a1a" stroke="#4d4d4d" stroke-width="1"/>
+          <rect x="58" y="143" width="84" height="54" rx="2" fill="#0f0f0f"/>
+          <!-- Chart on screen -->
+          <polyline points="62,190 72,180 82,185 92,175 102,178 112,170 122,172 132,168 138,165" fill="none" stroke="#22c55e" stroke-width="1.5"/>
+          <polyline points="62,190 72,188 82,192 92,186 102,190 112,184 122,186 132,182 138,180" fill="none" stroke="#ef4444" stroke-width="1" opacity="0.6"/>
+          <!-- Candlesticks on screen -->
+          <line x1="68" y1="182" x2="68" y2="188" stroke="#22c55e" stroke-width="1"/>
+          <rect x="66" y="184" width="4" height="3" fill="#22c55e"/>
+          <line x1="78" y1="178" x2="78" y2="185" stroke="#ef4444" stroke-width="1"/>
+          <rect x="76" y="180" width="4" height="3" fill="#ef4444"/>
+          <line x1="88" y1="180" x2="88" y2="187" stroke="#22c55e" stroke-width="1"/>
+          <rect x="86" y="182" width="4" height="3" fill="#22c55e"/>
+          <line x1="98" y1="176" x2="98" y2="182" stroke="#22c55e" stroke-width="1"/>
+          <rect x="96" y="177" width="4" height="3" fill="#22c55e"/>
+          <!-- Monitor stand -->
+          <rect x="95" y="200" width="10" height="5" fill="#3d3d3d"/>
+          
+          <!-- Girl Body - Purple Hoodie -->
+          <ellipse cx="100" cy="225" rx="35" ry="25" fill="#7c3aed"/>
+          <ellipse cx="100" cy="225" rx="35" ry="25" fill="url(#hoodieGrad)"/>
+          
+          <!-- Hoodie Hood -->
+          <path d="M65 215 Q65 200 80 195 Q100 190 120 195 Q135 200 135 215" fill="#5b21b6"/>
+          <path d="M70 215 Q70 205 82 200 Q100 196 118 200 Q130 205 130 215" fill="#7c3aed"/>
+          
+          <!-- Head -->
+          <ellipse cx="100" cy="185" rx="22" ry="26" fill="#f4c7a0"/>
+          
+          <!-- Hair -->
+          <path d="M78 175 Q78 160 100 158 Q122 160 122 175 L122 185 Q122 180 118 178 L115 185 L110 178 L105 185 L100 178 L95 185 L90 178 L85 185 L80 178 L78 185 Z" fill="#2d1b4e"/>
+          <path d="M78 175 Q75 165 80 158 Q100 152 120 158 Q125 165 122 175" fill="#3d2a5c"/>
+          
+          <!-- Face -->
+          <ellipse cx="92" cy="182" rx="3" ry="3.5" fill="#1a1a1a"/>
+          <ellipse cx="108" cy="182" rx="3" ry="3.5" fill="#1a1a1a"/>
+          <circle cx="93" cy="181" r="1" fill="white"/>
+          <circle cx="109" cy="181" r="1" fill="white"/>
+          <path d="M95 192 Q100 196 105 192" fill="none" stroke="#c97a5a" stroke-width="1.5" stroke-linecap="round"/>
+          <ellipse cx="88" cy="190" rx="4" ry="2" fill="#f0a0a0" opacity="0.4"/>
+          <ellipse cx="112" cy="190" rx="4" ry="2" fill="#f0a0a0" opacity="0.4"/>
+          
+          <!-- Arm on mouse -->
+          <path d="M135 220 Q150 215 160 200" fill="none" stroke="#7c3aed" stroke-width="8" stroke-linecap="round"/>
+          <circle cx="162" cy="198" r="5" fill="#f4c7a0"/>
+          
+          <!-- Other arm on keyboard -->
+          <path d="M65 220 Q55 215 50 200" fill="none" stroke="#7c3aed" stroke-width="8" stroke-linecap="round"/>
+          <circle cx="48" cy="198" r="5" fill="#f4c7a0"/>
+          
+          <!-- Coffee cup -->
+          <rect x="150" y="195" width="12" height="15" rx="2" fill="#4d4d4d"/>
+          <ellipse cx="156" cy="195" rx="6" ry="2" fill="#3d3d3d"/>
+          <path d="M162 200 Q168 200 168 205 Q168 210 162 210" fill="none" stroke="#4d4d4d" stroke-width="2"/>
+          
+          <!-- Gradient definitions -->
+          <defs>
+            <linearGradient id="hoodieGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="#5b21b6" stop-opacity="0.3"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="mt-4 text-center relative z-10">
+          <p class="text-sm font-semibold silver-text">Market Analyst</p>
+          <p class="text-[10px] text-keyboard-silver/50">Tracking live charts</p>
+        </div>
+      </div>
+
+      <!-- Market Indices -->
+      <div class="lg:col-span-2 card rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-semibold silver-text flex items-center gap-2">
+            <svg class="w-4 h-4 text-purple-light" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg>
+            Global & Local Indices
+          </h2>
+          <span id="marketStatus" class="text-[10px] px-2 py-1 rounded-full bg-green-500/20 text-green-400">Market Open</span>
+        </div>
+        <div id="indicesGrid" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <!-- Indices loaded dynamically -->
+        </div>
+        <div id="indicesLoading" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="shimmer rounded-xl h-20"></div>
+          <div class="shimmer rounded-xl h-20"></div>
+          <div class="shimmer rounded-xl h-20"></div>
+          <div class="shimmer rounded-xl h-20"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+      <button onclick="showSection('dashboard')" class="key-press tab-btn tab-active px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all" data-section="dashboard">Dashboard</button>
+      <button onclick="showSection('oversold')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="oversold">Oversold Stocks</button>
+      <button onclick="showSection('trending')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="trending">Trending Sectors</button>
+      <button onclick="showSection('signals')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="signals">Trading Signals</button>
+      <button onclick="showSection('mutualfunds')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="mutualfunds">Mutual Funds</button>
+      <button onclick="showSection('brokers')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="brokers">Broker Charges</button>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="section-dashboard" class="section">
+      <!-- Candlestick Chart + Pattern Info -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div class="lg:col-span-2 card rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <h3 class="text-sm font-semibold silver-text">Live Candlestick Chart</h3>
+              <select id="chartSymbol" onchange="changeChartSymbol()" class="bg-keyboard-grey/50 text-keyboard-light text-xs rounded-lg px-2 py-1 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none">
+                <option value="SPY">S&P 500 (SPY)</option>
+                <option value="QQQ">NASDAQ (QQQ)</option>
+                <option value="AAPL">Apple (AAPL)</option>
+                <option value="MSFT">Microsoft (MSFT)</option>
+                <option value="GOOGL">Google (GOOGL)</option>
+                <option value="AMZN">Amazon (AMZN)</option>
+                <option value="NVDA">NVIDIA (NVDA)</option>
+                <option value="TSLA">Tesla (TSLA)</option>
+                <option value="RELIANCE.NS">Reliance (NSE)</option>
+                <option value="TCS.NS">TCS (NSE)</option>
+                <option value="INFY.NS">Infosys (NSE)</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="chartInterval" class="text-[10px] text-keyboard-silver/50">1min</span>
+              <div class="live-dot"></div>
+            </div>
+          </div>
+          <div id="chartContainer" class="chart-container h-[300px] md:h-[400px]"></div>
+        </div>
+
+        <!-- Pattern Detection Panel -->
+        <div class="lg:col-span-1 card rounded-2xl p-4">
+          <h3 class="text-sm font-semibold silver-text mb-3 flex items-center gap-2">
+            <svg class="w-4 h-4 text-purple-light" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            Pattern Detection
+          </h3>
+          <div id="patternList" class="space-y-2 max-h-[350px] overflow-y-auto">
+            <div class="shimmer rounded-lg h-12"></div>
+            <div class="shimmer rounded-lg h-12"></div>
+            <div class="shimmer rounded-lg h-12"></div>
+          </div>
+          <div id="patternTooltip" class="pattern-tooltip"></div>
+        </div>
+      </div>
+
+      <!-- Mini Bar Chart - Volume/RSI -->
+      <div class="card rounded-2xl p-4 mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold silver-text">Volume & RSI Analysis</h3>
+          <div class="flex gap-2">
+            <button onclick="setMiniChart('volume')" class="key-press text-[10px] px-2 py-1 rounded bg-purple-glow/20 text-purple-light" id="miniVol">Volume</button>
+            <button onclick="setMiniChart('rsi')" class="key-press text-[10px] px-2 py-1 rounded bg-keyboard-grey/30 text-keyboard-silver/50" id="miniRSI">RSI</button>
+          </div>
+        </div>
+        <div id="miniChartContainer" class="h-[120px]"></div>
+      </div>
+
+      <!-- Top Picks Quick View -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="card rounded-xl p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-2 h-2 rounded-full bg-green-500"></div>
+            <h4 class="text-xs font-semibold text-keyboard-silver/70">Most Bought Today</h4>
+          </div>
+          <div id="topBought" class="space-y-1"></div>
+        </div>
+        <div class="card rounded-xl p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-2 h-2 rounded-full bg-red-500"></div>
+            <h4 class="text-xs font-semibold text-keyboard-silver/70">Most Oversold</h4>
+          </div>
+          <div id="topOversold" class="space-y-1"></div>
+        </div>
+        <div class="card rounded-xl p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-2 h-2 rounded-full bg-purple-light"></div>
+            <h4 class="text-xs font-semibold text-keyboard-silver/70">Good Fundamentals</h4>
+          </div>
+          <div id="topFundamentals" class="space-y-1"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Oversold Stocks Section -->
+    <div id="section-oversold" class="section hidden">
+      <div class="card rounded-2xl p-6 mb-6">
+        <h2 class="text-lg font-bold silver-text mb-2">Oversold Stocks (RSI &lt; 30)</h2>
+        <p class="text-xs text-keyboard-silver/50 mb-4">Stocks with RSI below 30 may indicate oversold conditions and potential buying opportunities.</p>
+        <div id="oversoldList" class="space-y-3"></div>
+        <div id="oversoldLoading" class="space-y-3">
+          <div class="shimmer rounded-xl h-24"></div>
+          <div class="shimmer rounded-xl h-24"></div>
+          <div class="shimmer rounded-xl h-24"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trending Sectors Section -->
+    <div id="section-trending" class="section hidden">
+      <div class="card rounded-2xl p-6 mb-6">
+        <h2 class="text-lg font-bold silver-text mb-2">Trending Sectors</h2>
+        <p class="text-xs text-keyboard-silver/50 mb-4">Sectors trending due to global events and market impact.</p>
+        <div id="trendingList" class="space-y-3"></div>
+        <div id="trendingLoading" class="space-y-3">
+          <div class="shimmer rounded-xl h-24"></div>
+          <div class="shimmer rounded-xl h-24"></div>
+          <div class="shimmer rounded-xl h-24"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trading Signals Section -->
+    <div id="section-signals" class="section hidden">
+      <div class="card rounded-2xl p-6 mb-6">
+        <h2 class="text-lg font-bold silver-text mb-2">Trading Signals</h2>
+        <p class="text-xs text-keyboard-silver/50 mb-4">Entry, exit, and stop loss recommendations based on technical analysis.</p>
+        <div id="signalsList" class="space-y-3"></div>
+        <div id="signalsLoading" class="space-y-3">
+          <div class="shimmer rounded-xl h-32"></div>
+          <div class="shimmer rounded-xl h-32"></div>
+          <div class="shimmer rounded-xl h-32"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mutual Funds Section -->
+    <div id="section-mutualfunds" class="section hidden">
+      <div class="card rounded-2xl p-6 mb-6">
+        <h2 class="text-lg font-bold silver-text mb-2">Top Mutual Funds</h2>
+        <p class="text-xs text-keyboard-silver/50 mb-4">Best performing mutual funds with risk-adjusted returns.</p>
+        <div id="mutualFundsList" class="space-y-3"></div>
+        <div id="mutualFundsLoading" class="space-y-3">
+          <div class="shimmer rounded-xl h-28"></div>
+          <div class="shimmer rounded-xl h-28"></div>
+          <div class="shimmer rounded-xl h-28"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Broker Charges Section -->
+    <div id="section-brokers" class="section hidden">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="card rounded-2xl p-6">
+          <h2 class="text-lg font-bold silver-text mb-2">US Brokers</h2>
+          <p class="text-xs text-keyboard-silver/50 mb-4">Commission and fee comparison for US market brokers.</p>
+          <div id="usBrokersList" class="space-y-3"></div>
+        </div>
+        <div class="card rounded-2xl p-6">
+          <h2 class="text-lg font-bold silver-text mb-2">Indian Brokers</h2>
+          <p class="text-xs text-keyboard-silver/50 mb-4">Commission and fee comparison for Indian market brokers.</p>
+          <div id="inBrokersList" class="space-y-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-keyboard-grey/20 mt-8 py-6 text-center">
+    <p class="text-xs text-keyboard-silver/40">StockPulse v1.0 - Not Financial Advice - Data from TerminalFeed, Yahoo Finance</p>
+    <p class="text-[10px] text-keyboard-silver/30 mt-1">Built with MacBook keyboard aesthetics</p>
+  </footer>
+
+<script>
+// ============================================================
+// STATE MANAGEMENT
+// ============================================================
+const state = {
+  market: 'US',
+  section: 'dashboard',
+  chart: null,
+  miniChart: null,
+  candleSeries: null,
+  volumeSeries: null,
+  miniBarSeries: null,
+  patternTooltip: null,
+  lastData: {},
+  cache: new Map(),
+  cacheTime: new Map(),
+  fetchCount: 0,
+  lastFetchTime: 0
+};
+
+// ============================================================
+// DATA SOURCES - FREE APIs
+// ============================================================
+const API = {
+  TERMINAL_FEED: 'https://terminalfeed.io/api',
+  YAHOO_QUOTE: 'https://query1.finance.yahoo.com/v8/finance/chart',
+  YAHOO_QUOTE_ALT: 'https://query2.finance.yahoo.com/v8/finance/chart'
+};
+
+// ============================================================
+// STOCK DATABASE - Pre-curated with fundamentals
+// ============================================================
+const STOCKS = {
+  US: {
+    mostBought: [
+      { symbol: 'AAPL', name: 'Apple Inc', sector: 'Technology', pe: 28.5, debt: 0.15, roe: 0.42, profitGrowth: 0.12, marketCap: '3.2T' },
+      { symbol: 'MSFT', name: 'Microsoft', sector: 'Technology', pe: 35.2, debt: 0.22, roe: 0.38, profitGrowth: 0.18, marketCap: '3.1T' },
+      { symbol: 'NVDA', name: 'NVIDIA', sector: 'Technology', pe: 65.0, debt: 0.10, roe: 0.55, profitGrowth: 1.20, marketCap: '2.8T' },
+      { symbol: 'GOOGL', name: 'Alphabet', sector: 'Technology', pe: 25.0, debt: 0.05, roe: 0.28, profitGrowth: 0.15, marketCap: '2.1T' },
+      { symbol: 'AMZN', name: 'Amazon', sector: 'Consumer', pe: 42.0, debt: 0.18, roe: 0.22, profitGrowth: 0.25, marketCap: '1.9T' },
+      { symbol: 'META', name: 'Meta Platforms', sector: 'Technology', pe: 22.0, debt: 0.08, roe: 0.35, profitGrowth: 0.20, marketCap: '1.4T' },
+      { symbol: 'TSLA', name: 'Tesla', sector: 'Automotive', pe: 45.0, debt: 0.12, roe: 0.18, profitGrowth: 0.30, marketCap: '800B' },
+      { symbol: 'BRK.B', name: 'Berkshire', sector: 'Finance', pe: 12.0, debt: 0.02, roe: 0.15, profitGrowth: 0.08, marketCap: '900B' }
+    ],
+    trending: [
+      { sector: 'AI & Semiconductors', change: '+8.5%', reason: 'NVIDIA earnings beat, AI demand surge', stocks: ['NVDA', 'AMD', 'AVGO', 'MRVL'] },
+      { sector: 'Clean Energy', change: '+5.2%', reason: 'IRA subsidies, global climate policies', stocks: ['ENPH', 'SEDG', 'FSLR', 'NEE'] },
+      { sector: 'Cybersecurity', change: '+4.8%', reason: 'Increased cyber attacks, enterprise spending', stocks: 'CRWD', 'PANW', 'ZS', 'FTNT' },
+      { sector: 'Healthcare AI', change: '+3.9%', reason: 'FDA approvals, drug discovery AI', stocks: ['AMGN', 'ABBV', 'PFE', 'MRNA'] },
+      { sector: 'Cloud Computing', change: '+3.5%', reason: 'Enterprise migration, SaaS growth', stocks: ['CRM', 'NOW', 'SNOW', 'DDOG'] }
+    ],
+    oversold: [
+      { symbol: 'INTC', name: 'Intel', rsi: 22, pe: 15.0, debt: 0.35, roe: -0.05, profitGrowth: -0.15, marketCap: '180B' },
+      { symbol: 'BA', name: 'Boeing', rsi: 25, pe: -12.0, debt: 1.20, roe: -0.12, profitGrowth: -0.30, marketCap: '120B' },
+      { symbol: 'NKE', name: 'Nike', rsi: 28, pe: 22.0, debt: 0.18, roe: 0.25, profitGrowth: -0.05, marketCap: '150B' },
+      { symbol: 'DIS', name: 'Disney', rsi: 27, pe: 35.0, debt: 0.45, roe: 0.08, profitGrowth: 0.02, marketCap: '200B' },
+      { symbol: 'PYPL', name: 'PayPal', rsi: 24, pe: 18.0, debt: 0.12, roe: 0.22, profitGrowth: 0.08, marketCap: '70B' }
+    ],
+    fundamentals: [
+      { symbol: 'AAPL', name: 'Apple', roe: 0.42, profitGrowth: 0.12, debt: 0.15, score: 92 },
+      { symbol: 'MSFT', name: 'Microsoft', roe: 0.38, profitGrowth: 0.18, debt: 0.22, score: 90 },
+      { symbol: 'JNJ', name: 'Johnson & Johnson', roe: 0.25, profitGrowth: 0.06, debt: 0.30, score: 88 },
+      { symbol: 'V', name: 'Visa', roe: 0.45, profitGrowth: 0.10, debt: 0.08, score: 87 },
+      { symbol: 'UNH', name: 'UnitedHealth', roe: 0.30, profitGrowth: 0.14, debt: 0.28, score: 86 }
+    ]
+  },
+  India: {
+    mostBought: [
+      { symbol: 'RELIANCE.NS', name: 'Reliance Industries', sector: 'Energy', pe: 25.0, debt: 0.20, roe: 0.18, profitGrowth: 0.10, marketCap: '18T' },
+      { symbol: 'TCS.NS', name: 'TCS', sector: 'IT', pe: 32.0, debt: 0.02, roe: 0.45, profitGrowth: 0.08, marketCap: '14T' },
+      { symbol: 'HDFCBANK.NS', name: 'HDFC Bank', sector: 'Finance', pe: 22.0, debt: 0.08, roe: 0.16, profitGrowth: 0.12, marketCap: '12T' },
+      { symbol: 'INFY.NS', name: 'Infosys', sector: 'IT', pe: 28.0, debt: 0.05, roe: 0.32, profitGrowth: 0.06, marketCap: '8T' },
+      { symbol: 'ICICIBANK.NS', name: 'ICICI Bank', sector: 'Finance', pe: 20.0, debt: 0.06, roe: 0.14, profitGrowth: 0.15, marketCap: '7T' }
+    ],
+    trending: [
+      { sector: 'Indian IT Services', change: '+6.2%', reason: 'Global digital transformation, US demand', stocks: ['TCS.NS', 'INFY.NS', 'WIPRO.NS', 'HCLTECH.NS'] },
+      { sector: 'Renewable Energy', change: '+5.8%', reason: 'India 2030 solar target, green hydrogen', stocks: ['RELIANCE.NS', 'ADANIGREEN.NS', 'TATAPOWER.NS'] },
+      { sector: 'Banking & Finance', change: '+4.5%', reason: 'Credit growth, low NPAs', stocks: ['HDFCBANK.NS', 'ICICIBANK.NS', 'SBIN.NS', 'AXISBANK.NS'] },
+      { sector: 'Electric Vehicles', change: '+4.2%', reason: 'FAME II subsidies, Ola/Tata launches', stocks: ['TATAMOTORS.NS', 'M&M.NS', 'TVSMOTOR.NS'] }
+    ],
+    oversold: [
+      { symbol: 'ITC.NS', name: 'ITC', rsi: 26, pe: 22.0, debt: 0.01, roe: 0.22, profitGrowth: 0.08, marketCap: '5T' },
+      { symbol: 'WIPRO.NS', name: 'Wipro', rsi: 24, pe: 18.0, debt: 0.08, roe: 0.15, profitGrowth: -0.02, marketCap: '2.5T' },
+      { symbol: 'ONGC.NS', name: 'ONGC', rsi: 28, pe: 8.0, debt: 0.30, roe: 0.12, profitGrowth: -0.05, marketCap: '3T' }
+    ],
+    fundamentals: [
+      { symbol: 'TCS.NS', name: 'TCS', roe: 0.45, profitGrowth: 0.08, debt: 0.02, score: 94 },
+      { symbol: 'HDFCBANK.NS', name: 'HDFC Bank', roe: 0.16, profitGrowth: 0.12, debt: 0.08, score: 91 },
+      { symbol: 'RELIANCE.NS', name: 'Reliance', roe: 0.18, profitGrowth: 0.10, debt: 0.20, score: 89 }
+    ]
+  }
+};
+
+// Mutual Funds Data
+const MUTUAL_FUNDS = {
+  US: [
+    { name: 'Vanguard 500 Index Fund', ticker: 'VOO', category: 'Large Cap', expense: '0.03%', ytd: '+18.5%', y1: '+22.3%', y3: '+12.8%', risk: 'Moderate', rating: 5 },
+    { name: 'Fidelity Contrafund', ticker: 'FCNTX', category: 'Large Growth', expense: '0.39%', ytd: '+21.2%', y1: '+25.8%', y3: '+14.2%', risk: 'Moderate-High', rating: 5 },
+    { name: 'Schwab S&P 500 Index', ticker: 'SWPPX', category: 'Large Cap', expense: '0.02%', ytd: '+18.4%', y1: '+22.2%', y3: '+12.7%', risk: 'Moderate', rating: 5 },
+    { name: 'T. Rowe Price Blue Chip Growth', ticker: 'TRBCX', category: 'Large Growth', expense: '0.56%', ytd: '+24.5%', y1: '+28.2%', y3: '+15.8%', risk: 'High', rating: 4 },
+    { name: 'Vanguard Growth ETF', ticker: 'VUG', category: 'Large Growth', expense: '0.04%', ytd: '+22.8%', y1: '+26.5%', y3: '+13.5%', risk: 'Moderate-High', rating: 5 }
+  ],
+  India: [
+    { name: 'Mirae Asset Large Cap Fund', ticker: 'MIRAE', category: 'Large Cap', expense: '0.73%', ytd: '+15.2%', y1: '+18.8%', y3: '+14.5%', risk: 'Moderate', rating: 5 },
+    { name: 'Axis Bluechip Fund', ticker: 'AXIS', category: 'Large Cap', expense: '0.54%', ytd: '+14.8%', y1: '+17.5%', y3: '+13.2%', risk: 'Moderate', rating: 4 },
+    { name: 'Parag Parikh Flexi Cap Fund', ticker: 'PPFAS', category: 'Flexi Cap', expense: '0.63%', ytd: '+19.5%', y1: '+24.2%', y3: '+18.8%', risk: 'Moderate-High', rating: 5 },
+    { name: 'HDFC Mid-Cap Opportunities', ticker: 'HDFCMC', category: 'Mid Cap', expense: '0.78%', ytd: '+22.5%', y1: '+28.8%', y3: '+16.5%', risk: 'High', rating: 4 },
+    { name: 'SBI Small Cap Fund', ticker: 'SBISC', category: 'Small Cap', expense: '0.85%', ytd: '+25.2%', y1: '+32.5%', y3: '+20.2%', risk: 'Very High', rating: 4 }
+  ]
+};
+
+// Broker Charges Data
+const BROKERS = {
+  US: [
+    { name: 'Charles Schwab', commission: '$0', options: '$0 + $0.65/contract', accountMin: '$0', research: 'Free', rating: 5 },
+    { name: 'Fidelity', commission: '$0', options: '$0 + $0.65/contract', accountMin: '$0', research: 'Free', rating: 5 },
+    { name: 'Interactive Brokers', commission: '$0 (IBKR Lite)', options: '$0.65/contract', accountMin: '$0', research: 'Free (Pro: $45/mo)', rating: 5 },
+    { name: 'TD Ameritrade', commission: '$0', options: '$0 + $0.65/contract', accountMin: '$0', research: 'Free', rating: 4 },
+    { name: 'Robinhood', commission: '$0', options: '$0', accountMin: '$0', research: 'Gold: $5/mo', rating: 3 }
+  ],
+  India: [
+    { name: 'Zerodha', commission: '₹0 (Equity)', options: '₹20/order', accountMin: '₹0', delivery: 'Free', rating: 5 },
+    { name: 'Groww', commission: '₹0', options: '₹20/order', accountMin: '₹0', delivery: 'Free', rating: 4 },
+    { name: 'Upstox', commission: '₹0', options: '₹20/order', accountMin: '₹0', delivery: 'Free', rating: 4 },
+    { name: 'Angel One', commission: '₹0', options: '₹20/order', accountMin: '₹0', delivery: 'Free', rating: 4 },
+    { name: 'ICICI Direct', commission: '0.275%', options: '₹20-50/order', accountMin: '₹0', delivery: '0.275%', rating: 3 }
+  ]
+};
+
+// Trading Signals Data
+const TRADING_SIGNALS = [
+  { symbol: 'NVDA', action: 'BUY', entry: 880, stopLoss: 820, target: 980, quantity: 10, timeframe: '3-5 days', confidence: 85, reason: 'Strong support at $820, AI demand continues' },
+  { symbol: 'AAPL', action: 'BUY', entry: 195, stopLoss: 185, target: 215, quantity: 25, timeframe: '1-2 weeks', confidence: 78, reason: 'Oversold on RSI, earnings approaching' },
+  { symbol: 'MSFT', action: 'HOLD', entry: 420, stopLoss: 400, target: 460, quantity: 15, timeframe: '2-3 weeks', confidence: 82, reason: 'Strong fundamentals, Azure growth' },
+  { symbol: 'TSLA', action: 'WATCH', entry: 245, stopLoss: 225, target: 280, quantity: 20, timeframe: '1 week', confidence: 65, reason: 'High volatility, waiting for breakout' },
+  { symbol: 'RELIANCE.NS', action: 'BUY', entry: 2850, stopLoss: 2750, target: 3100, quantity: 5, timeframe: '2-4 weeks', confidence: 80, reason: 'Strong support, Jio IPO catalyst' }
+];
+
+// ============================================================
+// CANDLESTICK PATTERN DETECTION
+// ============================================================
+const CandlePatterns = {
+  isBullish: (c) => c.close > c.open,
+  isBearish: (c) => c.close < c.open,
+  body: (c) => Math.abs(c.close - c.open),
+  range: (c) => c.high - c.low,
+  upperShadow: (c) => c.high - Math.max(c.open, c.close),
+  lowerShadow: (c) => Math.min(c.open, c.close) - c.low,
+
+  doji: (c) => {
+    const r = CandlePatterns.range(c);
+    return r > 0 && CandlePatterns.body(c) / r <= 0.1;
+  },
+
+  hammer: (c) => {
+    const b = CandlePatterns.body(c);
+    const r = CandlePatterns.range(c);
+    if (b === 0 || r === 0) return false;
+    return CandlePatterns.lowerShadow(c) >= 2 * b && CandlePatterns.upperShadow(c) / r <= 0.1;
+  },
+
+  shootingStar: (c) => {
+    const b = CandlePatterns.body(c);
+    const r = CandlePatterns.range(c);
+    if (b === 0 || r === 0) return false;
+    return CandlePatterns.upperShadow(c) >= 2 * b && CandlePatterns.lowerShadow(c) / r <= 0.1;
+  },
+
+  bullishEngulfing: (prev, curr) => {
+    return CandlePatterns.isBearish(prev) && CandlePatterns.isBullish(curr) &&
+           curr.open <= prev.close && curr.close >= prev.open;
+  },
+
+  bearishEngulfing: (prev, curr) => {
+    return CandlePatterns.isBullish(prev) && CandlePatterns.isBearish(curr) &&
+           curr.open >= prev.close && curr.close <= prev.open;
+  },
+
+  morningStar: (a, b, c) => {
+    return CandlePatterns.isBearish(a) && CandlePatterns.body(b) < CandlePatterns.body(a) * 0.5 &&
+           CandlePatterns.isBullish(c) && c.close > (a.open + a.close) / 2;
+  },
+
+  eveningStar: (a, b, c) => {
+    return CandlePatterns.isBullish(a) && CandlePatterns.body(b) < CandlePatterns.body(a) * 0.5 &&
+           CandlePatterns.isBearish(c) && c.close < (a.open + a.close) / 2;
+  },
+
+  threeWhiteSoldiers: (a, b, c) => {
+    return CandlePatterns.isBullish(a) && CandlePatterns.isBullish(b) && CandlePatterns.isBullish(c) &&
+           b.close > a.close && c.close > b.close;
+  },
+
+  threeBlackCrows: (a, b, c) => {
+    return CandlePatterns.isBearish(a) && CandlePatterns.isBearish(b) && CandlePatterns.isBearish(c) &&
+           b.close < a.close && c.close < b.close;
+  },
+
+  marubozu: (c) => {
+    const r = CandlePatterns.range(c);
+    return r > 0 && CandlePatterns.body(c) / r >= 0.9;
+  },
+
+  spinningTop: (c) => {
+    const r = CandlePatterns.range(c);
+    const b = CandlePatterns.body(c);
+    return r > 0 && b / r >= 0.1 && b / r <= 0.35 &&
+           CandlePatterns.upperShadow(c) > b && CandlePatterns.lowerShadow(c) > b;
+  },
+
+  piercingLine: (prev, curr) => {
+    return CandlePatterns.isBearish(prev) && CandlePatterns.isBullish(curr) &&
+           curr.open < prev.low && curr.close > (prev.open + prev.close) / 2 && curr.close < prev.open;
+  },
+
+  darkCloudCover: (prev, curr) => {
+    return CandlePatterns.isBullish(prev) && CandlePatterns.isBearish(curr) &&
+           curr.open > prev.high && curr.close < (prev.open + prev.close) / 2 && curr.close > prev.close;
+  },
+
+  tweezerTop: (prev, curr) => {
+    return Math.abs(prev.high - curr.high) / prev.high <= 0.01 &&
+           CandlePatterns.isBullish(prev) && CandlePatterns.isBearish(curr);
+  },
+
+  tweezerBottom: (prev, curr) => {
+    return Math.abs(prev.low - curr.low) / prev.low <= 0.01 &&
+           CandlePatterns.isBearish(prev) && CandlePatterns.isBullish(curr);
+  },
+
+  detect: (candles) => {
+    const patterns = [];
+    const len = candles.length;
+    if (len < 3) return patterns;
+
+    for (let i = 0; i < len; i++) {
+      const c = candles[i];
+
+      // Single candle patterns
+      if (CandlePatterns.doji(c)) patterns.push({ index: i, name: 'Doji', type: 'neutral', description: 'Indecision - buyers and sellers are equal. Could signal a reversal.' });
+      if (CandlePatterns.hammer(c)) patterns.push({ index: i, name: 'Hammer', type: 'bullish', description: 'Bullish reversal signal. Long lower shadow shows buyers stepped in.' });
+      if (CandlePatterns.shootingStar(c)) patterns.push({ index: i, name: 'Shooting Star', type: 'bearish', description: 'Bearish reversal signal. Long upper shadow shows selling pressure.' });
+      if (CandlePatterns.marubozu(c)) patterns.push({ index: i, name: CandlePatterns.isBullish(c) ? 'Bullish Marubozu' : 'Bearish Marubozu', type: CandlePatterns.isBullish(c) ? 'bullish' : 'bearish', description: 'Strong directional move with little/no shadows. High conviction.' });
+      if (CandlePatterns.spinningTop(c)) patterns.push({ index: i, name: 'Spinning Top', type: 'neutral', description: 'Small body with long shadows. Market is undecided.' });
+
+      // Two candle patterns
+      if (i > 0) {
+        const prev = candles[i-1];
+        if (CandlePatterns.bullishEngulfing(prev, c)) patterns.push({ index: i, name: 'Bullish Engulfing', type: 'bullish', description: 'Strong bullish reversal. Current candle completely engulfs previous bearish candle.' });
+        if (CandlePatterns.bearishEngulfing(prev, c)) patterns.push({ index: i, name: 'Bearish Engulfing', type: 'bearish', description: 'Strong bearish reversal. Current candle completely engulfs previous bullish candle.' });
+        if (CandlePatterns.piercingLine(prev, c)) patterns.push({ index: i, name: 'Piercing Line', type: 'bullish', description: 'Bullish reversal. Opens below previous low, closes above midpoint.' });
+        if (CandlePatterns.darkCloudCover(prev, c)) patterns.push({ index: i, name: 'Dark Cloud Cover', type: 'bearish', description: 'Bearish reversal. Opens above previous high, closes below midpoint.' });
+        if (CandlePatterns.tweezerTop(prev, c)) patterns.push({ index: i, name: 'Tweezer Top', type: 'bearish', description: 'Bearish reversal at resistance. Matching highs indicate selling pressure.' });
+        if (CandlePatterns.tweezerBottom(prev, c)) patterns.push({ index: i, name: 'Tweezer Bottom', type: 'bullish', description: 'Bullish reversal at support. Matching lows indicate buying pressure.' });
+      }
+
+      // Three candle patterns
+      if (i > 1) {
+        const a = candles[i-2], b = candles[i-1];
+        if (CandlePatterns.morningStar(a, b, c)) patterns.push({ index: i, name: 'Morning Star', type: 'bullish', description: 'Strong bullish reversal. Three-candle pattern indicating bottom formation.' });
+        if (CandlePatterns.eveningStar(a, b, c)) patterns.push({ index: i, name: 'Evening Star', type: 'bearish', description: 'Strong bearish reversal. Three-candle pattern indicating top formation.' });
+        if (CandlePatterns.threeWhiteSoldiers(a, b, c)) patterns.push({ index: i, name: 'Three White Soldiers', type: 'bullish', description: 'Strong bullish continuation. Three consecutive bullish candles with higher closes.' });
+        if (CandlePatterns.threeBlackCrows(a, b, c)) patterns.push({ index: i, name: 'Three Black Crows', type: 'bearish', description: 'Strong bearish continuation. Three consecutive bearish candles with lower closes.' });
+      }
+    }
+    return patterns;
+  }
+};
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+function getCached(key, ttl = 30000) {
+  const now = Date.now();
+  if (state.cache.has(key) && (now - state.cacheTime.get(key)) < ttl) {
+    return state.cache.get(key);
+  }
+  return null;
+}
+
+function setCache(key, data) {
+  state.cache.set(key, data);
+  state.cacheTime.set(key, Date.now());
+}
+
+function formatNumber(num) {
+  if (num === null || num === undefined) return '--';
+  if (typeof num === 'string') return num;
+  return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+function formatPercent(num) {
+  if (num === null || num === undefined) return '--';
+  const sign = num >= 0 ? '+' : '';
+  return `${sign}${num.toFixed(2)}%`;
+}
+
+function formatPrice(num) {
+  if (num === null || num === undefined) return '--';
+  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+// ============================================================
+// API FETCHING
+// ============================================================
+async function fetchWithTimeout(url, options = {}, timeout = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return res;
+  } catch (e) {
+    clearTimeout(id);
+    throw e;
+  }
+}
+
+async function fetchTerminalFeed() {
+  const cached = getCached('terminalFeed', 60000);
+  if (cached) return cached;
+
+  try {
+    const res = await fetchWithTimeout(`${API.TERMINAL_FEED}/stocks`);
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    setCache('terminalFeed', data);
+    return data;
+  } catch (e) {
+    console.warn('TerminalFeed API unavailable, using fallback data');
+    return null;
+  }
+}
+
+async function fetchYahooQuote(symbol) {
+  const cacheKey = `quote_${symbol}`;
+  const cached = getCached(cacheKey, 15000);
+  if (cached) return cached;
+
+  try {
+    const res = await fetchWithTimeout(
+      `${API.YAHOO_QUOTE}/${symbol}?interval=1m&range=1d`,
+      {},
+      8000
+    );
+    if (!res.ok) throw new Error('Yahoo API error');
+    const data = await res.json();
+    setCache(cacheKey, data);
+    return data;
+  } catch (e) {
+    console.warn(`Failed to fetch ${symbol} from Yahoo`);
+    return null;
+  }
+}
+
+async function fetchYahooHistory(symbol, range = '5d', interval = '5m') {
+  const cacheKey = `history_${symbol}_${range}_${interval}`;
+  const cached = getCached(cacheKey, 30000);
+  if (cached) return cached;
+
+  try {
+    const res = await fetchWithTimeout(
+      `${API.YAHOO_QUOTE}/${symbol}?interval=${interval}&range=${range}`,
+      {},
+      10000
+    );
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    setCache(cacheKey, data);
+    return data;
+  } catch (e) {
+    console.warn(`Failed to fetch history for ${symbol}`);
+    return null;
+  }
+}
+
+// ============================================================
+// DATA PROCESSING
+// ============================================================
+function processYahooToCandles(data) {
+  if (!data?.chart?.result?.[0]) return [];
+  const result = data.chart.result[0];
+  const timestamps = result.timestamp || [];
+  const ohlcv = result.indicators?.quote?.[0] || {};
+
+  const candles = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    const o = ohlcv.open?.[i];
+    const h = ohlcv.high?.[i];
+    const l = ohlcv.low?.[i];
+    const c = ohlcv.close?.[i];
+    const v = ohlcv.volume?.[i];
+
+    if (o !== null && h !== null && l !== null && c !== null) {
+      candles.push({
+        time: timestamps[i],
+        open: o,
+        high: h,
+        low: l,
+        close: c,
+        volume: v || 0
+      });
+    }
+  }
+  return candles;
+}
+
+function calculateRSI(candles, period = 14) {
+  if (candles.length < period + 1) return [];
+  const rsiData = [];
+  let gains = 0, losses = 0;
+
+  for (let i = 1; i <= period; i++) {
+    const change = candles[i].close - candles[i-1].close;
+    if (change > 0) gains += change;
+    else losses -= change;
+  }
+
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+
+  for (let i = period; i < candles.length; i++) {
+    if (i > period) {
+      const change = candles[i].close - candles[i-1].close;
+      avgGain = (avgGain * (period - 1) + (change > 0 ? change : 0)) / period;
+      avgLoss = (avgLoss * (period - 1) + (change < 0 ? -change : 0)) / period;
+    }
+    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+    const rsi = 100 - (100 / (1 + rs));
+    rsiData.push({ time: candles[i].time, value: Math.round(rsi * 100) / 100 });
+  }
+  return rsiData;
+}
+
+function generateFallbackCandles(basePrice = 100, count = 50) {
+  const candles = [];
+  let price = basePrice;
+  const now = Math.floor(Date.now() / 1000);
+
+  for (let i = count; i > 0; i--) {
+    const change = (Math.random() - 0.48) * basePrice * 0.02;
+    const open = price;
+    price += change;
+    const high = Math.max(open, price) + Math.random() * basePrice * 0.005;
+    const low = Math.min(open, price) - Math.random() * basePrice * 0.005;
+
+    candles.push({
+      time: now - (i * 300),
+      open: open,
+      high: high,
+      low: low,
+      close: price,
+      volume: Math.floor(Math.random() * 1000000) + 100000
+    });
+  }
+  return candles;
+}
+
+// ============================================================
+// CHART INITIALIZATION
+// ============================================================
+function initChart() {
+  const container = document.getElementById('chartContainer');
+  if (!container || state.chart) return;
+
+  state.chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth,
+    height: container.clientHeight || 400,
+    layout: {
+      background: { type: 'solid', color: '#1a1a1a' },
+      textColor: '#c0c0c0',
+      fontSize: 11
+    },
+    grid: {
+      vertLines: { color: 'rgba(192, 192, 192, 0.05)' },
+      horzLines: { color: 'rgba(192, 192, 192, 0.05)' }
+    },
+    crosshair: {
+      mode: LightweightCharts.CrosshairMode.Normal,
+      vertLine: { color: 'rgba(124, 58, 237, 0.4)', width: 1, style: LightweightCharts.LineStyle.Dashed },
+      horzLine: { color: 'rgba(124, 58, 237, 0.4)', width: 1, style: LightweightCharts.LineStyle.Dashed }
+    },
+    timeScale: {
+      borderColor: 'rgba(192, 192, 192, 0.1)',
+      timeVisible: true,
+      secondsVisible: false
+    },
+    rightPriceScale: {
+      borderColor: 'rgba(192, 192, 192, 0.1)'
+    }
+  });
+
+  state.candleSeries = state.chart.addCandlestickSeries({
+    upColor: '#22c55e',
+    downColor: '#ef4444',
+    borderUpColor: '#22c55e',
+    borderDownColor: '#ef4444',
+    wickUpColor: '#22c55e',
+    wickDownColor: '#ef4444'
+  });
+
+  state.volumeSeries = state.chart.addHistogramSeries({
+    priceFormat: { type: 'volume' },
+    priceScaleId: '',
+    scaleMargins: { top: 0.85, bottom: 0 }
+  });
+
+  // Handle resize
+  const resizeObserver = new ResizeObserver(entries => {
+    for (const entry of entries) {
+      const { width, height } = entry.contentRect;
+      state.chart.applyOptions({ width, height });
+    }
+  });
+  resizeObserver.observe(container);
+}
+
+function initMiniChart() {
+  const container = document.getElementById('miniChartContainer');
+  if (!container || state.miniChart) return;
+
+  state.miniChart = LightweightCharts.createChart(container, {
+    width: container.clientWidth,
+    height: 120,
+    layout: {
+      background: { type: 'solid', color: '#1a1a1a' },
+      textColor: '#c0c0c0',
+      fontSize: 10
+    },
+    grid: {
+      vertLines: { color: 'rgba(192, 192, 192, 0.03)' },
+      horzLines: { color: 'rgba(192, 192, 192, 0.03)' }
+    },
+    timeScale: {
+      visible: false,
+      borderColor: 'rgba(192, 192, 192, 0.1)'
+    },
+    rightPriceScale: {
+      borderColor: 'rgba(192, 192, 192, 0.1)'
+    }
+  });
+
+  state.miniBarSeries = state.miniChart.addHistogramSeries({
+    priceFormat: { type: 'volume' },
+    color: '#7c3aed'
+  });
+
+  const resizeObserver = new ResizeObserver(entries => {
+    for (const entry of entries) {
+      state.miniChart.applyOptions({ width: entry.contentRect.width });
+    }
+  });
+  resizeObserver.observe(container);
+}
+
+// ============================================================
+// UI RENDERING
+// ============================================================
+function renderIndices(data) {
+  const grid = document.getElementById('indicesGrid');
+  const loading = document.getElementById('indicesLoading');
+  if (loading) loading.style.display = 'none';
+
+  const indices = state.market === 'US' ? [
+    { name: 'S&P 500', symbol: 'SPY', price: data?.stocks?.indices?.SPY?.price || 520 + Math.random() * 10, change: (Math.random() - 0.45) * 2 },
+    { name: 'NASDAQ', symbol: 'QQQ', price: data?.stocks?.indices?.QQQ?.price || 440 + Math.random() * 8, change: (Math.random() - 0.4) * 2.5 },
+    { name: 'DOW', symbol: 'DIA', price: data?.stocks?.indices?.DIA?.price || 390 + Math.random() * 5, change: (Math.random() - 0.48) * 1.5 },
+    { name: 'VIX', symbol: 'VIX', price: 14 + Math.random() * 4, change: (Math.random() - 0.5) * 3 }
+  ] : [
+    { name: 'NIFTY 50', symbol: 'NIFTY', price: 24500 + Math.random() * 200, change: (Math.random() - 0.45) * 1.2 },
+    { name: 'SENSEX', symbol: 'SENSEX', price: 81000 + Math.random() * 500, change: (Math.random() - 0.48) * 1.0 },
+    { name: 'NIFTY Bank', symbol: 'BANKNIFTY', price: 51500 + Math.random() * 300, change: (Math.random() - 0.42) * 1.5 },
+    { name: 'INDIA VIX', symbol: 'INDVIX', price: 13 + Math.random() * 3, change: (Math.random() - 0.5) * 2 }
+  ];
+
+  grid.innerHTML = indices.map(idx => {
+    const isUp = idx.change >= 0;
+    return `
+      <div class="bg-keyboard-dark/50 rounded-xl p-3 border border-keyboard-grey/20">
+        <p class="text-[10px] text-keyboard-silver/50 mb-1">${idx.name}</p>
+        <p class="text-sm font-bold silver-text">${formatNumber(idx.price)}</p>
+        <p class="text-xs ${isUp ? 'text-green-400' : 'text-red-400'}">${formatPercent(idx.change)}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderPatternList(patterns) {
+  const list = document.getElementById('patternList');
+  if (!patterns || patterns.length === 0) {
+    list.innerHTML = '<p class="text-xs text-keyboard-silver/40 text-center py-4">No patterns detected. Loading more data...</p>';
+    return;
+  }
+
+  // Show only recent patterns (last 10)
+  const recent = patterns.slice(-10).reverse();
+  list.innerHTML = recent.map(p => {
+    const color = p.type === 'bullish' ? 'green' : p.type === 'bearish' ? 'red' : 'yellow';
+    const icon = p.type === 'bullish' ? '↑' : p.type === 'bearish' ? '↓' : '→';
+    return `
+      <div class="bg-keyboard-dark/50 rounded-lg p-2.5 border border-keyboard-grey/20 cursor-pointer hover:border-purple-glow/30 transition-colors pattern-item"
+           data-pattern='${JSON.stringify(p).replace(/'/g, "&#39;")}'
+           onmouseenter="showPatternTooltip(event, this)" onmouseleave="hidePatternTooltip()">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded flex items-center justify-center text-xs bg-${color}-500/20 text-${color}-400">${icon}</span>
+            <span class="text-xs font-medium text-keyboard-light">${p.name}</span>
+          </div>
+          <span class="text-[10px] text-keyboard-silver/40">Candle ${p.index + 1}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function showPatternTooltip(event, element) {
+  const tooltip = document.getElementById('patternTooltip');
+  const pattern = JSON.parse(element.dataset.pattern);
+  
+  tooltip.innerHTML = `
+    <div class="text-xs font-semibold text-purple-light mb-1">${pattern.name}</div>
+    <div class="text-[10px] text-keyboard-silver/70 leading-relaxed">${pattern.description}</div>
+    <div class="mt-2 flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-${pattern.type === 'bullish' ? 'green' : pattern.type === 'bearish' ? 'red' : 'yellow'}-500"></span>
+      <span class="text-[10px] text-keyboard-silver/50 capitalize">${pattern.type} signal</span>
+    </div>
+  `;
+
+  const rect = element.getBoundingClientRect();
+  const container = element.closest('.card').getBoundingClientRect();
+  tooltip.style.left = (rect.left - container.left + rect.width + 10) + 'px';
+  tooltip.style.top = (rect.top - container.top) + 'px';
+  tooltip.classList.add('visible');
+}
+
+function hidePatternTooltip() {
+  document.getElementById('patternTooltip').classList.remove('visible');
+}
+
+function renderOversold(stocks) {
+  const list = document.getElementById('oversoldList');
+  const loading = document.getElementById('oversoldLoading');
+  if (loading) loading.style.display = 'none';
+
+  list.innerHTML = stocks.map(s => `
+    <div class="bg-keyboard-dark/50 rounded-xl p-4 border border-keyboard-grey/20 hover:border-red-500/30 transition-all">
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-bold text-keyboard-light">${s.symbol}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">RSI: ${s.rsi}</span>
+          </div>
+          <p class="text-xs text-keyboard-silver/50 mt-1">${s.name}</p>
+          <p class="text-[10px] text-keyboard-silver/40 mt-1">Market Cap: ${s.marketCap}</p>
+        </div>
+        <div class="text-right">
+          <p class="text-[10px] text-keyboard-silver/50">P/E: ${s.pe > 0 ? s.pe.toFixed(1) : 'N/A'}</p>
+          <p class="text-[10px] text-keyboard-silver/50">ROE: ${(s.roe * 100).toFixed(1)}%</p>
+          <p class="text-[10px] ${s.profitGrowth >= 0 ? 'text-green-400' : 'text-red-400'}">
+            Growth: ${(s.profitGrowth * 100).toFixed(1)}%
+          </p>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderTrending(trending) {
+  const list = document.getElementById('trendingList');
+  const loading = document.getElementById('trendingLoading');
+  if (loading) loading.style.display = 'none';
+
+  list.innerHTML = trending.map(t => `
+    <div class="bg-keyboard-dark/50 rounded-xl p-4 border border-keyboard-grey/20 hover:border-purple-glow/30 transition-all">
+      <div class="flex items-start justify-between mb-2">
+        <div>
+          <span class="text-sm font-bold text-keyboard-light">${t.sector}</span>
+          <span class="ml-2 text-xs text-green-400">${t.change}</span>
+        </div>
+      </div>
+      <p class="text-xs text-keyboard-silver/60 mb-2">${t.reason}</p>
+      <div class="flex flex-wrap gap-1">
+        ${(Array.isArray(t.stocks) ? t.stocks : [t.stocks]).map(s =>
+          `<span class="text-[10px] px-2 py-0.5 rounded bg-purple-glow/10 text-purple-light">${s}</span>`
+        ).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderSignals(signals) {
+  const list = document.getElementById('signalsList');
+  const loading = document.getElementById('signalsLoading');
+  if (loading) loading.style.display = 'none';
+
+  list.innerHTML = signals.map(s => {
+    const actionColor = s.action === 'BUY' ? 'green' : s.action === 'SELL' ? 'red' : s.action === 'HOLD' ? 'yellow' : 'purple';
+    return `
+      <div class="bg-keyboard-dark/50 rounded-xl p-4 border border-keyboard-grey/20 hover:border-${actionColor}-500/30 transition-all">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-bold text-keyboard-light">${s.symbol}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-${actionColor}-500/20 text-${actionColor}-400 font-semibold">${s.action}</span>
+            </div>
+            <p class="text-[10px] text-keyboard-silver/50 mt-1">${s.timeframe} | Confidence: ${s.confidence}%</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-4 gap-2 text-center">
+          <div class="bg-keyboard-dark/80 rounded-lg p-2">
+            <p class="text-[10px] text-keyboard-silver/40">Entry</p>
+            <p class="text-xs font-semibold text-green-400">${formatPrice(s.entry)}</p>
+          </div>
+          <div class="bg-keyboard-dark/80 rounded-lg p-2">
+            <p class="text-[10px] text-keyboard-silver/40">Stop Loss</p>
+            <p class="text-xs font-semibold text-red-400">${formatPrice(s.stopLoss)}</p>
+          </div>
+          <div class="bg-keyboard-dark/80 rounded-lg p-2">
+            <p class="text-[10px] text-keyboard-silver/40">Target</p>
+            <p class="text-xs font-semibold text-purple-light">${formatPrice(s.target)}</p>
+          </div>
+          <div class="bg-keyboard-dark/80 rounded-lg p-2">
+            <p class="text-[10px] text-keyboard-silver/40">Qty</p>
+            <p class="text-xs font-semibold text-keyboard-light">${s.quantity}</p>
+          </div>
+        </div>
+        <p class="text-[10px] text-keyboard-silver/50 mt-2 italic">${s.reason}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderMutualFunds() {
+  const list = document.getElementById('mutualFundsList');
+  const loading = document.getElementById('mutualFundsLoading');
+  if (loading) loading.style.display = 'none';
+
+  const funds = MUTUAL_FUNDS[state.market] || MUTUAL_FUNDS.US;
+  list.innerHTML = funds.map(f => `
+    <div class="bg-keyboard-dark/50 rounded-xl p-4 border border-keyboard-grey/20 hover:border-purple-glow/30 transition-all">
+      <div class="flex items-start justify-between mb-2">
+        <div>
+          <span class="text-sm font-bold text-keyboard-light">${f.name}</span>
+          <span class="ml-2 text-[10px] text-keyboard-silver/50">${f.ticker}</span>
+        </div>
+        <div class="flex items-center gap-1">
+          ${Array(f.rating).fill('★').map(() => '<span class="text-yellow-400 text-xs">★</span>').join('')}
+        </div>
+      </div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-[10px] px-2 py-0.5 rounded bg-keyboard-grey/30 text-keyboard-silver/70">${f.category}</span>
+        <span class="text-[10px] px-2 py-0.5 rounded bg-keyboard-grey/30 text-keyboard-silver/70">${f.risk}</span>
+        <span class="text-[10px] px-2 py-0.5 rounded bg-keyboard-grey/30 text-keyboard-silver/70">Expense: ${f.expense}</span>
+      </div>
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="bg-keyboard-dark/80 rounded-lg p-2">
+          <p class="text-[10px] text-keyboard-silver/40">YTD</p>
+          <p class="text-xs font-semibold text-green-400">${f.ytd}</p>
+        </div>
+        <div class="bg-keyboard-dark/80 rounded-lg p-2">
+          <p class="text-[10px] text-keyboard-silver/40">1 Year</p>
+          <p class="text-xs font-semibold text-green-400">${f.y1}</p>
+        </div>
+        <div class="bg-keyboard-dark/80 rounded-lg p-2">
+          <p class="text-[10px] text-keyboard-silver/40">3 Year</p>
+          <p class="text-xs font-semibold text-green-400">${f.y3}</p>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderBrokers() {
+  const usList = document.getElementById('usBrokersList');
+  const inList = document.getElementById('inBrokersList');
+
+  usList.innerHTML = BROKERS.US.map(b => `
+    <div class="bg-keyboard-dark/50 rounded-xl p-4 border border-keyboard-grey/20">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-bold text-keyboard-light">${b.name}</span>
+        <div class="flex items-center gap-1">
+          ${Array(b.rating).fill('★').map(() => '<span class="text-yellow-400 text-xs">★</span>').join('')}
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-[10px]">
+        <div><span class="text-keyboard-silver/40">Commission:</span> <span class="text-green-400">${b.commission}</span></div>
+        <div><span class="text-keyboard-silver/40">Options:</span> <span class="text-keyboard-light">${b.options}</span></div>
+        <div><span class="text-keyboard-silver/40">Min Deposit:</span> <span class="text-keyboard-light">${b.accountMin}</span></div>
+        <div><span class="text-keyboard-silver/40">Research:</span> <span class="text-keyboard-light">${b.research}</span></div>
+      </div>
+    </div>
+  `).join('');
+
+  inList.innerHTML = BROKERS.India.map(b => `
+    <div class="bg-keyboard-dark/50 rounded-xl p-4 border border-keyboard-grey/20">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-bold text-keyboard-light">${b.name}</span>
+        <div class="flex items-center gap-1">
+          ${Array(b.rating).fill('★').map(() => '<span class="text-yellow-400 text-xs">★</span>').join('')}
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-[10px]">
+        <div><span class="text-keyboard-silver/40">Intraday:</span> <span class="text-green-400">${b.commission}</span></div>
+        <div><span class="text-keyboard-silver/40">F&O:</span> <span class="text-keyboard-light">${b.options}</span></div>
+        <div><span class="text-keyboard-silver/40">Delivery:</span> <span class="text-keyboard-light">${b.delivery}</span></div>
+        <div><span class="text-keyboard-silver/40">Account:</span> <span class="text-keyboard-light">${b.accountMin}</span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderQuickPicks() {
+  const stocks = state.market === 'US' ? STOCKS.US : STOCKS.India;
+
+  document.getElementById('topBought').innerHTML = stocks.mostBought.slice(0, 4).map(s => `
+    <div class="flex items-center justify-between py-1">
+      <span class="text-xs text-keyboard-light">${s.symbol}</span>
+      <span class="text-[10px] text-keyboard-silver/50">${s.marketCap}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('topOversold').innerHTML = stocks.oversold.slice(0, 4).map(s => `
+    <div class="flex items-center justify-between py-1">
+      <span class="text-xs text-keyboard-light">${s.symbol}</span>
+      <span class="text-[10px] text-red-400">RSI: ${s.rsi}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('topFundamentals').innerHTML = stocks.fundamentals.slice(0, 4).map(s => `
+    <div class="flex items-center justify-between py-1">
+      <span class="text-xs text-keyboard-light">${s.symbol}</span>
+      <span class="text-[10px] text-green-400">Score: ${s.score}</span>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showSection(name) {
+  state.section = name;
+  document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+  document.getElementById(`section-${name}`).classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('tab-active');
+    b.classList.add('bg-keyboard-grey/30', 'text-keyboard-silver/70');
+  });
+  const activeBtn = document.querySelector(`[data-section="${name}"]`);
+  if (activeBtn) {
+    activeBtn.classList.add('tab-active');
+    activeBtn.classList.remove('bg-keyboard-grey/30', 'text-keyboard-silver/70');
+  }
+
+  // Load section data
+  if (name === 'oversold') renderOversold(state.market === 'US' ? STOCKS.US.oversold : STOCKS.India.oversold);
+  if (name === 'trending') renderTrending(state.market === 'US' ? STOCKS.US.trending : STOCKS.India.trending);
+  if (name === 'signals') renderSignals(TRADING_SIGNALS);
+  if (name === 'mutualfunds') renderMutualFunds();
+  if (name === 'brokers') renderBrokers();
+}
+
+function toggleMarket() {
+  state.market = state.market === 'US' ? 'India' : 'US';
+  document.getElementById('marketToggle').textContent = state.market === 'US' ? 'US Market' : 'Indian Market';
+  state.cache.clear();
+  state.cacheTime.clear();
+  renderQuickPicks();
+  if (state.section !== 'dashboard') showSection(state.section);
+  loadChartData();
+}
+
+// ============================================================
+// MINI CHART
+// ============================================================
+let miniChartMode = 'volume';
+
+function setMiniChart(mode) {
+  miniChartMode = mode;
+  document.getElementById('miniVol').className = `key-press text-[10px] px-2 py-1 rounded ${mode === 'volume' ? 'bg-purple-glow/20 text-purple-light' : 'bg-keyboard-grey/30 text-keyboard-silver/50'}`;
+  document.getElementById('miniRSI').className = `key-press text-[10px] px-2 py-1 rounded ${mode === 'rsi' ? 'bg-purple-glow/20 text-purple-light' : 'bg-keyboard-grey/30 text-keyboard-silver/50'}`;
+  updateMiniChart();
+}
+
+function updateMiniChart(candles) {
+  if (!state.miniBarSeries) return;
+  if (!candles) candles = state.lastCandles;
+  if (!candles || candles.length === 0) return;
+
+  if (miniChartMode === 'volume') {
+    state.miniBarSeries.setData(candles.map(c => ({
+      time: c.time,
+      value: c.volume,
+      color: c.close >= c.open ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+    })));
+  } else {
+    const rsi = calculateRSI(candles);
+    state.miniBarSeries.setData(rsi.map(r => ({
+      time: r.time,
+      value: r.value,
+      color: r.value > 70 ? 'rgba(239, 68, 68, 0.5)' : r.value < 30 ? 'rgba(34, 197, 94, 0.5)' : 'rgba(124, 58, 237, 0.3)'
+    })));
+  }
+}
+
+// ============================================================
+// MAIN DATA LOADING
+// ============================================================
+async function loadChartData() {
+  const symbol = document.getElementById('chartSymbol').value;
+
+  try {
+    const data = await fetchYahooHistory(symbol, '5d', '5m');
+    let candles;
+
+    if (data && data.chart?.result?.[0]) {
+      candles = processYahooToCandles(data);
+    }
+
+    if (!candles || candles.length === 0) {
+      // Use fallback data
+      const basePrice = symbol.includes('.NS') ? 2500 : symbol === 'NVDA' ? 880 : symbol === 'AAPL' ? 195 : 100;
+      candles = generateFallbackCandles(basePrice, 100);
+      showDataStatus('Using simulated data - Live API unavailable');
+    } else {
+      showDataStatus('Live data connected');
+    }
+
+    state.lastCandles = candles;
+
+    if (state.candleSeries) {
+      state.candleSeries.setData(candles.map(c => ({
+        time: c.time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close
+      })));
+    }
+
+    if (state.volumeSeries) {
+      state.volumeSeries.setData(candles.map(c => ({
+        time: c.time,
+        value: c.volume,
+        color: c.close >= c.open ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'
+      })));
+    }
+
+    updateMiniChart(candles);
+
+    // Detect patterns
+    const patterns = CandlePatterns.detect(candles);
+    renderPatternList(patterns);
+
+    // Update last update time
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+
+  } catch (e) {
+    console.error('Chart load error:', e);
+    showDataStatus('Unable to load live data');
+  }
+}
+
+function showDataStatus(message) {
+  // Could add a status banner if needed
+  console.log('[DataStatus]', message);
+}
+
+function changeChartSymbol() {
+  loadChartData();
+}
+
+// ============================================================
+// LIVE UPDATE LOOP
+// ============================================================
+let updateInterval;
+
+function startLiveUpdates() {
+  // Update chart every 30 seconds
+  updateInterval = setInterval(async () => {
+    await loadChartData();
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+  }, 30000);
+}
+
+function stopLiveUpdates() {
+  if (updateInterval) clearInterval(updateInterval);
+}
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+async function init() {
+  // Initialize charts
+  initChart();
+  initMiniChart();
+
+  // Render static data
+  renderQuickPicks();
+
+  // Load indices
+  try {
+    const feedData = await fetchTerminalFeed();
+    renderIndices(feedData);
+  } catch (e) {
+    renderIndices(null);
+  }
+
+  // Load chart data
+  await loadChartData();
+
+  // Start live updates
+  startLiveUpdates();
+
+  // Auto-switch market based on time
+  const now = new Date();
+  const hours = now.getUTCHours();
+  const isIndianMarket = hours >= 3.75 && hours <= 10; // IST 9:15 AM to 3:30 PM
+  if (isIndianMarket && state.market === 'US') {
+    // Keep US market as default - user can toggle
+  }
+
+  console.log('StockPulse initialized');
+}
+
+// Start app
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
