@@ -11,7 +11,7 @@ if [ -n "$1" ]; then
 fi
 
 echo "Deploying to Netlify..."
-netlify deploy --prod --dir=. --site voluble-pika-444e68
+netlify deploy --prod --dir=.
 
 echo ""
 echo "✔ Code pushed to GitHub: https://github.com/Ruch-code/stock-advisor"
