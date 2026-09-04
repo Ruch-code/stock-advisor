@@ -366,6 +366,27 @@
         <div class="mt-3 bg-keyboard-dark/40 rounded-lg p-2.5 border border-keyboard-grey/20">
           <p id="conditionSummary" class="text-[11px] text-keyboard-silver/70">Analyzing global market conditions...</p>
         </div>
+        <div class="mt-3">
+          <button onclick="toggleIndicesEdu(this)" class="key-press text-[11px] px-3 py-1.5 rounded-lg bg-purple-glow/10 text-purple-light border border-purple-glow/30 hover:bg-purple-glow/20 transition-all">
+            💡 What are Global & Local indices? — Learn
+          </button>
+          <div id="indicesEdu" class="hidden mt-3 rounded-xl bg-keyboard-dark/40 border border-keyboard-grey/25 p-4">
+            <p class="text-xs text-keyboard-silver/70 leading-relaxed mb-3">
+              An <b class="text-keyboard-light">index</b> is a scoreboard that tracks a basket of stocks, so you can see
+              the mood of the whole market at a glance — <b class="text-keyboard-light">Global</b> means major world
+              markets (US shown here), <b class="text-keyboard-light">Local</b> means your own country (India). When
+              indices rise together, most stocks are in a buying mood; when they fall, caution is wise.
+            </p>
+            <p class="text-xs text-keyboard-silver/70 leading-relaxed mb-3">
+              <b class="text-purple-light">How to read the score above:</b> 0–35 <span class="text-red-400">Bearish</span>
+              (be defensive), 35–65 <span class="text-yellow-400">Sideways</span> (trade stock-specific), 65–100
+              <span class="text-green-400">Bullish</span> (risk-on). It blends index moves + Fed rate, unemployment,
+              10-year yield, GDP and Fear &amp; Greed sentiment.
+            </p>
+            <p class="text-[10px] uppercase tracking-wider text-keyboard-silver/40 mb-2">Why each index matters</p>
+            <div id="indicesEduList" class="grid md:grid-cols-2 gap-2"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1126,6 +1147,39 @@ function initMiniChart() {
 // ============================================================
 // UI RENDERING
 // ============================================================
+const INDEX_EDU = {
+  SPY:      { name: 'S&P 500',        origin: 'Global · US',                                            source: 'S&P Dow Jones Indices (tracked by the SPY ETF)',      significance: 'Tracks the 500 largest US companies — roughly 80% of US market value.', impact: 'The world\u2019s default market health gauge; when it climbs, risk-on appetite spreads to most stocks.' },
+  QQQ:      { name: 'NASDAQ 100',     origin: 'Global · US',                                            source: 'Nasdaq exchange (tracked by the QQQ ETF)',            significance: 'Tracks the 100 biggest tech, AI & growth companies (excluding banks).', impact: 'The tech/AI thermometer — leads sentiment for innovation-driven stocks.' },
+  DIA:      { name: 'Dow Jones 30',   origin: 'Global · US',                                            source: 'S&P Dow Jones Indices (tracked by the DIA ETF)',      significance: 'Tracks 30 iconic US blue-chip companies like Apple, Goldman, J&J.', impact: 'America\u2019s oldest index; a classic gauge of big-business confidence.' },
+  IWM:      { name: 'Russell 2000',   origin: 'Global · US',                                            source: 'FTSE Russell (tracked by the IWM ETF)',              significance: 'Tracks about 2,000 small-cap US companies.', impact: 'Small-caps mirror domestic consumer health — they lead in economic upswings and are first to feel slowdowns.' },
+  NIFTY:    { name: 'NIFTY 50',       origin: 'Local · India',                                          source: 'National Stock Exchange (NSE)',                       significance: 'Tracks India\u2019s 50 largest companies across every major sector.', impact: 'India\u2019s primary benchmark — foreign & institutional money flow shows up here first.' },
+  SENSEX:   { name: 'SENSEX',         origin: 'Local · India',                                          source: 'Bombay Stock Exchange (BSE)',                          significance: 'Tracks 30 of India\u2019s bluest blue-chips.', impact: 'India\u2019s oldest index; a proxy for large-cap investor confidence.' },
+  BANKNIFTY:{ name: 'NIFTY Bank',     origin: 'Local · India',                                          source: 'National Stock Exchange (NSE)',                       significance: 'Tracks India\u2019s 12 biggest banking stocks.', impact: 'Banks drive credit cycles — strong signal for interest-rate and liquidity sentiment.' },
+  INDVIX:   { name: 'India VIX',      origin: 'Local · India',                                          source: 'National Stock Exchange (NSE)',                       significance: 'The market\u2019s fear gauge — expected 30-day swing in NIFTY.', impact: 'Rising = fear and hedging demand; falling = calm and confidence.' }
+};
+
+function renderIndicesEdu() {
+  const list = document.getElementById('indicesEduList');
+  if (!list) return;
+  list.innerHTML = Object.values(INDEX_EDU).map(e => `
+    <div class="rounded-lg bg-keyboard-black/40 border border-keyboard-grey/20 p-3">
+      <div class="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+        <p class="text-xs font-semibold text-keyboard-light">${e.name}</p>
+        <span class="text-[9px] px-1.5 py-0.5 rounded ${e.origin.startsWith('Global') ? 'bg-purple-glow/15 text-purple-light' : 'bg-green-500/15 text-green-400'}">${e.origin}</span>
+      </div>
+      <p class="text-[10px] text-keyboard-silver/50 mb-1">${e.source}</p>
+      <p class="text-[10px] text-keyboard-silver/70 leading-snug mb-1"><b class="text-keyboard-silver/90">Significance:</b> ${e.significance}</p>
+      <p class="text-[10px] text-keyboard-silver/70 leading-snug"><b class="text-keyboard-silver/90">Impact:</b> ${e.impact}</p>
+    </div>
+  `).join('');
+}
+
+function toggleIndicesEdu(btn) {
+  const edu = document.getElementById('indicesEdu');
+  const hidden = edu.classList.toggle('hidden');
+  btn.innerHTML = hidden ? '💡 What are Global & Local indices? — Learn' : '💡 Hide indices explainer';
+}
+
 function renderIndices(feedData, economicData, fearGreed) {
   const grid = document.getElementById('indicesGrid');
   const loading = document.getElementById('indicesLoading');
@@ -1151,21 +1205,22 @@ function renderIndices(feedData, economicData, fearGreed) {
       const live = bySym[m.sym];
       if (live) {
         return {
-          name: m.name, price: live.price, change: live.change_percent,
+          name: m.name, sym: m.sym, price: live.price, change: live.change_percent,
           stale: live.stale, ageSeconds: live.age_seconds
         };
       }
-      return { name: m.name, price: null, change: null, stale: true, ageSeconds: null };
+      return { name: m.name, sym: m.sym, price: null, change: null, stale: true, ageSeconds: null };
     });
     conditionData = US_INDEX_MAP.map(m => bySym[m.sym]).filter(Boolean);
   } else {
     // TerminalFeed is US-centric; fall back to a local NSE-based estimate
-    indices = [
-      { name: 'NIFTY 50', sym: 'NIFTY', base: 24500, spread: 200, change: null },
-      { name: 'SENSEX', sym: 'SENSEX', base: 81000, spread: 500, change: null },
-      { name: 'NIFTY Bank', sym: 'BANKNIFTY', base: 51500, spread: 300, change: null },
-      { name: 'INDIA VIX', sym: 'INDVIX', base: 13, spread: 3, change: null }
-    ].map(({ name, sym, base, spread }) => ({
+    const IN_MAP = [
+      { name: 'NIFTY 50', sym: 'NIFTY', base: 24500, spread: 200 },
+      { name: 'SENSEX', sym: 'SENSEX', base: 81000, spread: 500 },
+      { name: 'NIFTY Bank', sym: 'BANKNIFTY', base: 51500, spread: 300 },
+      { name: 'India VIX', sym: 'INDVIX', base: 13, spread: 3 }
+    ];
+    indices = IN_MAP.map(({ name, sym, base, spread }) => ({
       name, sym, price: null, change: null, stale: true, isIndia: true, base, spread
     }));
     conditionData = [];
@@ -1174,15 +1229,14 @@ function renderIndices(feedData, economicData, fearGreed) {
   // Render index tiles
   grid.innerHTML = indices.map(idx => {
     if (idx.price === null) {
-      // India or synthetic fallback
       if (idx.isIndia) {
         const price = idx.base + ((Math.random() - 0.2) * idx.spread);
         const change = (Math.random() - 0.45) * 1.2;
-        return idxTile(idx.name, price, change, false);
+        return idxTile(idx.name, idx.sym, price, change, false);
       }
       return idxTileSkeleton(idx.name);
     }
-    return idxTile(idx.name, idx.price, idx.change, !!idx.stale);
+    return idxTile(idx.name, idx.sym, idx.price, idx.change, !!idx.stale);
   }).join('');
 
   // Macro condition: sentiment score from real global data
@@ -1191,12 +1245,17 @@ function renderIndices(feedData, economicData, fearGreed) {
   renderMarketStatus(macro);
 }
 
-function idxTile(name, price, change, stale) {
+function idxTile(name, sym, price, change, stale) {
   const isUp = change >= 0;
+  const edu = INDEX_EDU[sym];
   const staleTag = stale ? '<span class="ml-1 text-[8px] text-yellow-500/80">DELAYED</span>' : '';
+  const originTag = edu
+    ? `<span class="ml-1 text-[8px] px-1 rounded ${edu.origin.startsWith('Global') ? 'bg-purple-glow/15 text-purple-light' : 'bg-green-500/15 text-green-400'}">${edu.origin.split('·')[0]}</span>`
+    : '';
+  const title = edu ? `${edu.name}: ${edu.significance} ${edu.impact}` : name;
   return `
-    <div class="bg-keyboard-dark/50 rounded-xl p-3 border border-keyboard-grey/20">
-      <p class="text-[10px] text-keyboard-silver/50 mb-1">${name}${staleTag}</p>
+    <div class="bg-keyboard-dark/50 rounded-xl p-3 border border-keyboard-grey/20 cursor-help transition-all hover:border-purple-glow/40" title="${title}">
+      <p class="text-[10px] text-keyboard-silver/50 mb-1">${name}${originTag}${staleTag}</p>
       <p class="text-sm font-bold silver-text">${formatNumber(price)}</p>
       <p class="text-xs ${isUp ? 'text-green-400' : 'text-red-400'}">${formatPercent(change)}</p>
     </div>
@@ -1980,9 +2039,10 @@ async function init() {
   initChart();
   initMiniChart();
 
-  // Render static data + alerts
+  // Render static data + alerts + indices explainer
   renderQuickPicks();
   renderAlerts();
+  renderIndicesEdu();
 
   // Load indices, market condition, macro + news ticker (TerminalFeed)
   await loadNewsTicker();
