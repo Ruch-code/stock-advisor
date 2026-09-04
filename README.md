@@ -15,8 +15,30 @@ A comprehensive stock and mutual fund advisor with live market data, candlestick
 
 - Pure HTML/CSS/JavaScript (no framework)
 - Lightweight Charts (TradingView)
-- TerminalFeed API (free, no auth)
-- Tailwind CSS
+- TerminalFeed API (free, no auth) - indices, macro, sentiment, quotes
+- Netlify Functions (server-side data proxy)
+
+## Live Chart Data (API Keys)
+
+Real candle data flows through `netlify/functions/proxy.js`, which reads two optional
+env vars (set as Netlify secrets; never exposed to the browser):
+
+| Env var                  | Market                 | Get a free key at              |
+| ------------------------ | ---------------------- | ------------------------------ |
+| `FINNHUB_API_KEY`        | US stocks / USD        | https://finnhub.io/register    |
+| `TWELVEDATA_API_KEY`     | India / NSE / BSE (INR) | https://twelvedata.com/pricing |
+
+Set them with:
+
+```bash
+netlify env:set FINNHUB_API_KEY <your-finnhub-token>
+netlify env:set TWELVEDATA_API_KEY <your-twelvedata-token>
+netlify deploy --prod --dir=.
+```
+
+Provider order: `.NS`/`.BO` symbols use Twelve Data (INR), everything else uses
+Finnhub (USD). Without keys the chart falls back to simulated candles and the app
+shows a clear "Live data unavailable" banner.
 
 ## Deployment
 

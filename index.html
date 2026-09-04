@@ -1859,7 +1859,10 @@ async function checkAlerts() {
 
 async function fetchYahooQuoteProxy(symbol) {
   const cacheKey = `quote_${symbol}`;
-  const cached = getCached(cacheKey, 15000);
+  // India (.NS) quotes are billed per-call by the free provider; poll every 5 min
+  // so a day of alert checks stays well inside the free daily credit limit.
+  const ttl = /\.(NS|BO)$/i.test(symbol) ? 300000 : 15000;
+  const cached = getCached(cacheKey, ttl);
   if (cached) return cached;
   try {
     const res = await fetchWithTimeout(`${API.YAHOO_QUOTE}?symbol=${encodeURIComponent(symbol)}&interval=1m&range=1d`, {}, 10000);
