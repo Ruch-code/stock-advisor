@@ -261,7 +261,7 @@
       transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
       z-index: 40;
     }
-    .idx-tile:hover .idx-tip, .idx-tile:focus-within .idx-tip {
+    .idx-tile:hover .idx-tip, .idx-tile:focus-within .idx-tip, .idx-tile.show-tip .idx-tip {
       opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0) scale(1);
     }
     .idx-tip-name {
@@ -1018,7 +1018,7 @@
 // STATE MANAGEMENT
 // ============================================================
 const state = {
-  market: 'US',
+  market: localStorage.getItem('stockpulse_market') === 'India' ? 'India' : 'US',
   section: 'dashboard',
   chart: null,
   miniChart: null,
@@ -2076,6 +2076,7 @@ function renderQuickPicks() {
 // ============================================================
 function showSection(name) {
   state.section = name;
+  try { localStorage.setItem('stockpulse_last_tab', name); } catch (e) {}
   document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
   const target = document.getElementById(`section-${name}`);
   if (target) target.classList.remove('hidden');
@@ -2107,6 +2108,7 @@ function showSection(name) {
 
 function toggleMarket() {
   state.market = state.market === 'US' ? 'India' : 'US';
+  try { localStorage.setItem('stockpulse_market', state.market); } catch (e) {}
   document.getElementById('marketToggle').textContent = state.market === 'US' ? 'US Market' : 'Indian Market';
   state.cache.clear();
   state.cacheTime.clear();
@@ -2308,6 +2310,20 @@ function removeAlert(id) {
   const alerts = loadAlerts().filter(a => a.id !== id);
   saveAlerts(alerts);
   renderAlerts();
+}
+
+function quickSetAlert(sym) {
+  try { localStorage.setItem('stockpulse_last_tab', 'dashboard'); } catch (e) {}
+  showSection('dashboard');
+  const input = document.getElementById('alertSymbol');
+  if (input) {
+    input.value = sym.toUpperCase();
+    input.focus();
+  }
+  const price = document.getElementById('alertPrice');
+  if (price) price.value = '';
+  document.getElementById('alertDirection').value = 'above';
+  alertBanner(`Set a target price for ${sym.toUpperCase()} — pick above/below and it will notify you.`);
 }
 
 function renderAlerts() {
@@ -3001,7 +3017,8 @@ function sigCard(d, ranking) {
       '<span>RSI ' + (d.rsi != null ? Math.round(d.rsi) : '—') + '</span>' +
       '<span class="text-keyboard-silver/30">·</span>' +
       '<span class="truncate">' + ranking + '</span>' +
-    '</div></div>';
+    '</div>' +
+    '<button onclick="event.stopPropagation(); quickSetAlert(' + "'" + u.s + "'" + ')" class="key-press mt-2 w-full text-[9px] font-bold uppercase tracking-wider text-purple-light/80 border border-purple-glow/30 rounded-lg py-1.5 hover:bg-purple-glow/15 transition-colors">＋ Set price alert</button></div>';
 }
 
 function renderSignalList() {
@@ -3270,7 +3287,8 @@ function renderExpertPanel(data) {
         '<div class="flex items-center gap-3"><span class="rounded-lg border px-2.5 py-1 text-sm font-black ' + EP_CAT_COLOR[cat.c] + '">' + cat.c + '</span>' +
         '<div><p class="text-sm font-bold text-keyboard-light">' + escapeHtml(s.pick.n) + ' <span class="text-[10px] font-normal text-keyboard-silver/50">' + s.pick.s + ' · ' + s.pick.sect + '</span></p>' +
         '<p class="text-[10px] text-keyboard-silver/50">' + cat.label + ' — <span class="text-keyboard-silver/80">' + voteBar + '</span></p></div></div>' +
-        '<div class="flex gap-1.5 text-[9px] font-bold">' + ['A', 'B', 'C', 'D'].map(c => '<span class="px-1.5 py-0.5 rounded ' + (s.category.c === c ? EP_CAT_COLOR[c] : 'text-keyboard-silver/30') + '">' + c + '</span>').join('') + '</div>' +
+        '<div class="flex items-center gap-1.5 text-[9px] font-bold">' + ['A', 'B', 'C', 'D'].map(c => '<span class="px-1.5 py-0.5 rounded ' + (s.category.c === c ? EP_CAT_COLOR[c] : 'text-keyboard-silver/30') + '">' + c + '</span>').join('') + '</div>' +
+        '<button onclick="quickSetAlert(' + "'" + s.pick.s + "'" + ')" class="key-press text-[9px] font-bold uppercase tracking-wider text-purple-light/80 border border-purple-glow/30 rounded px-2 py-1 hover:bg-purple-glow/15 transition-colors shrink-0">＋ Set price alert</button>' +
       '</div>' +
       '<div class="flex flex-wrap gap-2 mt-3 text-[10px] text-keyboard-silver/60"><span>Consistency <b class="text-keyboard-light tabular-nums">' + Math.round(iv.consistency) + '</b></span><span>·</span><span>Moat <b class="text-keyboard-light tabular-nums">' + Math.round(iv.moat) + '</b></span><span>·</span><span>Growth <b class="text-keyboard-light tabular-nums">' + Math.round(iv.growth) + '</b></span><span>·</span><span>Cyclical <b class="text-keyboard-light tabular-nums">' + Math.round(iv.cyclical) + '</b></span><span>·</span><span>MOS <b class="' + (iv.mos >= 0 ? 'text-green-400' : 'text-red-400') + ' tabular-nums">' + iv.mos.toFixed(1) + '%</b></span></div>' +
       '<div class="mt-2 rounded-lg bg-keyboard-black/30 border border-keyboard-grey/15 p-2 text-[10px] text-keyboard-silver/70">' + cat.advice + '</div>' +
@@ -3304,7 +3322,8 @@ function nseWatchlistBlock(data) {
       '<div class="grid grid-cols-1 md:grid-cols-2 gap-2">' +
       gated.map(u => '<div class="rounded-lg bg-keyboard-black/20 border border-keyboard-grey/10 p-2.5 flex items-center justify-between gap-2">' +
         '<div class="min-w-0"><p class="text-sm font-semibold text-keyboard-silver/70 truncate">' + escapeHtml(u.n) + ' <span class="text-[10px] font-normal text-keyboard-silver/40">NSE</span></p>' +
-        '<p class="text-[10px] text-keyboard-silver/40">' + u.sect + '</p></div>' +
+        '<p class="text-[10px] text-keyboard-silver/40">' + u.sect + '</p>' +
+        '<button onclick="quickSetAlert(' + "'" + u.s + "'" + ')" class="key-press mt-1.5 text-[9px] font-bold uppercase tracking-wider text-purple-light/80 border border-purple-glow/30 rounded px-2 py-1 hover:bg-purple-glow/15 transition-colors">＋ Set price alert</button></div>' +
         '<span class="text-[9px] text-red-300/70 shrink-0">Needs paid NSE/BSE feed</span></div>').join('') +
       '</div>' +
       '<p class="text-[10px] text-keyboard-silver/40 mt-2">These 13 Indian blue-chips are listed above for visibility. Free sources gate NSE/BSE quotes, so the 25 experts can\u2019t score them yet — the moment a paid feed connects, they score automatically (same model as the US set).</p>' +
@@ -3361,10 +3380,20 @@ async function init() {
   // Load chart data
   await loadChartData();
 
-  // Ensure only the dashboard is visible on load; other sections lazy-load on tab click
+  // Ensure only the intended section is visible on load (persisted last tab,
+  // falling back to the dashboard); other sections lazy-load on tab click
   document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
-  const d = document.getElementById('section-dashboard');
-  if (d) d.classList.remove('hidden');
+  const lastTab = (function() { try { return localStorage.getItem('stockpulse_last_tab'); } catch (e) { return null; } })();
+  const validTabs = ['dashboard', 'desk', 'paper', 'signals', 'oversold', 'trending', 'expertpanel', 'brokers', 'mutualfunds', 'crypto'];
+  const restore = (lastTab && validTabs.indexOf(lastTab) !== -1) ? lastTab : 'dashboard';
+  document.getElementById('marketToggle').textContent = state.market === 'US' ? 'US Market' : 'Indian Market';
+  if (restore === 'dashboard') {
+    const d = document.getElementById('section-dashboard');
+    if (d) d.classList.remove('hidden');
+    document.querySelector('[data-section="dashboard"]')?.classList.add('tab-active');
+  } else {
+    showSection(restore);
+  }
 
   // Start live updates
   startLiveUpdates();
@@ -3517,6 +3546,19 @@ async function init() {
   }
   requestAnimationFrame(tick);
 })();
+
+// Tap-to-show index tooltips on touch (no hover). One tap opens, tapping outside or another tile switches.
+document.addEventListener('DOMContentLoaded', function() {
+  const coarse = window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches;
+  if (!coarse) return;
+  document.addEventListener('click', function(ev) {
+    const tile = ev.target.closest && ev.target.closest('.idx-tile');
+    document.querySelectorAll('.idx-tile.show-tip').forEach(function(t){
+      if (!tile || t !== tile) t.classList.remove('show-tip');
+    });
+    if (tile && !tile.classList.contains('show-tip')) tile.classList.add('show-tip');
+  });
+});
 
   // Start app
   document.addEventListener('DOMContentLoaded', init);
