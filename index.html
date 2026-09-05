@@ -391,17 +391,21 @@
     </div>
 
     <!-- Navigation Tabs -->
-    <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-      <button onclick="showSection('dashboard')" class="key-press tab-btn tab-active px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all" data-section="dashboard">Dashboard</button>
-      <button onclick="showSection('desk')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="desk">Market Desk</button>
-      <button onclick="showSection('paper')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="paper">Daily Paper</button>
-      <button onclick="showSection('oversold')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="oversold">Oversold Stocks</button>
-      <button onclick="showSection('trending')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="trending">Trending Sectors</button>
-      <button onclick="showSection('signals')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="signals">Stock Signals</button>
-      <button onclick="showSection('expertpanel')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="expertpanel">Expert Panel</button>
-      <button onclick="showSection('crypto')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="crypto">Crypto Guide</button>
-      <button onclick="showSection('mutualfunds')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="mutualfunds">Mutual Funds</button>
-      <button onclick="showSection('brokers')" class="key-press tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="brokers">Broker Charges</button>
+    <div class="flex gap-2 mb-6 overflow-x-auto pb-2 items-center">
+      <span class="text-[9px] font-bold tracking-widest text-purple-light/60 pr-1 whitespace-nowrap">HOME</span>
+      <button onclick="showSection('dashboard')" class="key-press tab-btn tab-active px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all" data-section="dashboard">Dashboard</button>
+      <span class="text-[9px] font-bold tracking-widest text-purple-light/60 px-2 whitespace-nowrap">STOCKS</span>
+      <button onclick="showSection('desk')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="desk">Market Desk</button>
+      <button onclick="showSection('paper')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="paper">Daily Paper</button>
+      <button onclick="showSection('signals')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="signals">Stock Signals</button>
+      <button onclick="showSection('oversold')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="oversold">Oversold</button>
+      <button onclick="showSection('trending')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="trending">Trending</button>
+      <button onclick="showSection('expertpanel')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="expertpanel">Expert Panel</button>
+      <button onclick="showSection('brokers')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="brokers">Broker Charges</button>
+      <span class="text-[9px] font-bold tracking-widest text-purple-light/60 px-2 whitespace-nowrap">MUTUAL FUNDS</span>
+      <button onclick="showSection('mutualfunds')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="mutualfunds">Mutual Funds</button>
+      <span class="text-[9px] font-bold tracking-widest text-purple-light/60 px-2 whitespace-nowrap">CRYPTO</span>
+      <button onclick="showSection('crypto')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="crypto">Crypto Guide</button>
     </div>
 
     <!-- Dashboard Section -->
@@ -517,7 +521,7 @@
     </div>
 
     <!-- Market Desk Section -->
-    <div id="section-desk" class="section">
+    <div id="section-desk" class="section hidden">
       <!-- Market Clock -->
       <div class="card rounded-2xl p-6 mb-6">
         <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -635,7 +639,7 @@
     </div>
 
     <!-- Daily Paper Section -->
-    <div id="section-paper" class="section">
+    <div id="section-paper" class="section hidden">
       <div class="card rounded-2xl p-6">
         <div class="border-b-4 border-keyboard-grey/30 pb-4 mb-4">
           <div class="flex items-end justify-between flex-wrap gap-2">
@@ -664,7 +668,7 @@
     </div>
 
     <!-- Oversold Stocks Section -->
-    <div id="section-oversold" class="section">
+    <div id="section-oversold" class="section hidden">
       <div class="card rounded-2xl p-6 mb-6">
         <h2 class="text-lg font-bold silver-text mb-2">Oversold Stocks (RSI &lt; 30)</h2>
         <p class="text-xs text-keyboard-silver/50 mb-4">Stocks with RSI below 30 may indicate oversold conditions and potential buying opportunities.</p>
@@ -678,7 +682,7 @@
     </div>
 
     <!-- Trending Sectors Section -->
-    <div id="section-trending" class="section">
+    <div id="section-trending" class="section hidden">
       <div class="card rounded-2xl p-6 mb-6">
         <h2 class="text-lg font-bold silver-text mb-2">Trending Sectors</h2>
         <p class="text-xs text-keyboard-silver/50 mb-4">Sectors trending due to global events and market impact.</p>
@@ -692,7 +696,7 @@
     </div>
 
     <!-- Stock Signals Section -->
-    <div id="section-signals" class="section">
+    <div id="section-signals" class="section hidden">
       <div class="card rounded-2xl p-6 mb-6">
         <div class="flex items-center justify-between flex-wrap gap-3 mb-2">
           <div>
@@ -719,7 +723,7 @@
     </div>
 
     <!-- Mutual Funds Section -->
-    <div id="section-mutualfunds" class="section">
+    <div id="section-mutualfunds" class="section hidden">
       <div class="card rounded-2xl p-6 mb-6">
         <h2 class="text-lg font-bold silver-text mb-2">Top Mutual Funds</h2>
         <p class="text-xs text-keyboard-silver/50 mb-4">Best performing mutual funds with risk-adjusted returns.</p>
@@ -733,7 +737,7 @@
     </div>
 
     <!-- Broker Charges Section -->
-    <div id="section-brokers" class="section">
+    <div id="section-brokers" class="section hidden">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="card rounded-2xl p-6">
           <h2 class="text-lg font-bold silver-text mb-2">US Brokers</h2>
@@ -750,7 +754,7 @@
   </div>
 
   <!-- ABCD Expert Panel Section -->
-    <div id="section-expertpanel" class="section">
+    <div id="section-expertpanel" class="section hidden">
       <div class="card rounded-2xl p-6 mb-6">
         <div class="flex items-center justify-between flex-wrap gap-3 mb-2">
           <div>
@@ -782,7 +786,7 @@
     </div>
 
     <!-- Crypto Guide Section -->
-    <div id="section-crypto" class="section">
+    <div id="section-crypto" class="section hidden">
       <div class="card rounded-2xl p-6 mb-6">
         <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
           <div>
@@ -1932,8 +1936,9 @@ function renderQuickPicks() {
 // ============================================================
 function showSection(name) {
   state.section = name;
+  document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
   const target = document.getElementById(`section-${name}`);
-  if (target && target.scrollIntoView) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (target) target.classList.remove('hidden');
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.remove('tab-active');
     b.classList.add('bg-keyboard-grey/30', 'text-keyboard-silver/70');
@@ -1943,17 +1948,21 @@ function showSection(name) {
     activeBtn.classList.add('tab-active');
     activeBtn.classList.remove('bg-keyboard-grey/30', 'text-keyboard-silver/70');
   }
+  activeBtn && activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
 
-  // Load section data (sections stay visible; this just ensures data is fresh)
-  if (name === 'oversold') renderOversold(state.market === 'US' ? STOCKS.US.oversold : STOCKS.India.oversold);
-  if (name === 'trending') renderTrending(state.market === 'US' ? STOCKS.US.trending : STOCKS.India.trending);
-  if (name === 'signals') loadStockSignals();
-  if (name === 'mutualfunds') renderMutualFunds();
-  if (name === 'brokers') renderBrokers();
-  if (name === 'desk') { renderClock(); loadDesk(); }
-  if (name === 'paper' && state.paperTopic) loadPaper();
-  if (name === 'expertpanel') loadExpertPanel();
-  if (name === 'crypto') loadCrypto();
+  // Load section data (only the active one; lazy, so the page stays light)
+  try {
+    if (name === 'dashboard') { renderQuickPicks(); renderAlerts(); loadChartData(); }
+    if (name === 'oversold') renderOversold(state.market === 'US' ? STOCKS.US.oversold : STOCKS.India.oversold);
+    if (name === 'trending') renderTrending(state.market === 'US' ? STOCKS.US.trending : STOCKS.India.trending);
+    if (name === 'signals') loadStockSignals();
+    if (name === 'mutualfunds') renderMutualFunds();
+    if (name === 'brokers') renderBrokers();
+    if (name === 'desk') { renderClock(); loadDesk(); }
+    if (name === 'paper' && state.paperTopic) loadPaper();
+    if (name === 'expertpanel') loadExpertPanel();
+    if (name === 'crypto') loadCrypto();
+  } catch (e) { console.error('section load error', name, e); }
 }
 
 function toggleMarket() {
@@ -3124,13 +3133,10 @@ async function init() {
   // Load chart data
   await loadChartData();
 
-  // Load all feature sections eagerly (single-page layout shows everything at once)
-  renderClock();
-  loadDesk();
-  loadPaper();
-  loadStockSignals();
-  loadExpertPanel();
-  loadCrypto();
+  // Ensure only the dashboard is visible on load; other sections lazy-load on tab click
+  document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+  const d = document.getElementById('section-dashboard');
+  if (d) d.classList.remove('hidden');
 
   // Start live updates
   startLiveUpdates();
