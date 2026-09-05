@@ -756,6 +756,7 @@
         </div>
         <div class="flex gap-2 mb-5 flex-wrap" id="paperTopics">
           <button onclick="loadPaper('markets')" data-topic="markets" class="key-press text-xs px-3 py-1.5 rounded-lg bg-purple-glow/20 text-purple-light font-semibold transition-colors">Markets</button>
+          <button onclick="loadPaper('india')" data-topic="india" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">India</button>
           <button onclick="loadPaper('ideas')" data-topic="ideas" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">Stock ideas</button>
           <button onclick="loadPaper('gold')" data-topic="gold" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">Gold & Crude</button>
           <button onclick="loadPaper('wallst')" data-topic="wallst" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">Wall Street</button>
@@ -2229,7 +2230,7 @@ function tickerChip(label, cls) {
   return '<span class="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded mr-1.5 align-middle ' + cls + '">' + label + '</span>';
 }
 
-function buildTickerItems(feedData, econ, fear) {
+function buildTickerItems(feedData, econ, fear, indiaNews) {
   const items = [];
   const rows = (feedData && Array.isArray(feedData.data)) ? feedData.data : [];
   const india = state.market !== 'US';
@@ -2255,17 +2256,19 @@ function buildTickerItems(feedData, econ, fear) {
     items.push({ text: tickerChip('SENTIMENT', 'bg-amber-500/15 text-amber-400') + `Market sentiment: ${fear.data.label} (${fear.data.value}/100)` });
   }
 
-  // India-context headlines: when on Indian Market, lead with Indian names
-  const INDIA_NEWS = [
+  // India-context headlines: when on Indian Market, lead with real Indian headlines
+  const liveIndia = (indiaNews && Array.isArray(indiaNews) && indiaNews.length)
+    ? indiaNews.slice(0, 4)
+    : null;
+  const INDIA_NEWS = liveIndia || [
     'Nifty Holds Support; FII Flows Turn Positive',
     'Rupee Steadies as Dollar Index Eases',
     'RBI Focus: Inflation, Liquidity & Rate Path in Focus'
   ];
-  if (india) {
-    INDIA_NEWS.forEach(n => items.push({ text: tickerChip('INDIA', 'bg-green-500/15 text-green-400') + n + ' <span class="sep">•</span>', fallback: true }));
-  } else {
-    items.push({ text: tickerChip('INDIA', 'bg-green-500/15 text-green-400') + 'Nifty Holds Support; FII Flows Turn Positive <span class="sep">•</span>', fallback: true });
-  }
+  INDIA_NEWS.forEach(n => {
+    const text = typeof n === 'string' ? n : n.title;
+    items.push({ text: tickerChip('INDIA', 'bg-green-500/15 text-green-400') + escapeHtml(text) + ' <span class="sep">•</span>', fallback: !liveIndia });
+  });
 
   // Fall back to curated headlines if we have too few live items
   if (items.length < 6) {
@@ -2283,12 +2286,18 @@ function escapeHtml(s) {
 
 async function loadNewsTicker() {
   try {
-    const [feed, econ, fear] = await Promise.all([
+    const india = state.market !== 'US';
+    const [feed, econ, fear, indiaNews] = await Promise.all([
       fetchTerminalFeed().catch(() => null),
       fetchTerminalFeedEndpoint('economic-data').catch(() => null),
-      fetchTerminalFeedEndpoint('fear-greed').catch(() => null)
+      fetchTerminalFeedEndpoint('fear-greed').catch(() => null),
+      india ? fetchWithTimeout(API.YAHOO_QUOTE + '?mode=news&topic=india', {}, 12000)
+        .then(r => r.json())
+        .then(d => (d && Array.isArray(d.items)) ? d.items : null)
+        .catch(() => null)
+        : Promise.resolve(null)
     ]);
-    const items = buildTickerItems(feed, econ, fear);
+    const items = buildTickerItems(feed, econ, fear, indiaNews);
     renderTicker(items);
     showDataStatus(feed ? 'Live' : 'market feed delayed');
     state.lastFeed = feed; state.lastEcon = econ; state.lastFear = fear;
@@ -2890,7 +2899,7 @@ async function loadDesk() {
 // ============================================================
 // THE DAILY FINANCE PAPER — Google News via proxy
 // ============================================================
-const PAPER_TOPICS = { markets: 'Markets', ideas: 'Stock ideas', gold: 'Gold & Crude', wallst: 'Wall Street' };
+const PAPER_TOPICS = { markets: 'Markets', india: 'India', ideas: 'Stock ideas', gold: 'Gold & Crude', wallst: 'Wall Street' };
 
 function timeAgo(pub) {
   const t = Date.parse(pub || '');

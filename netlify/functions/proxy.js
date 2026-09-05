@@ -19,6 +19,12 @@ const NEWS_FEEDS = {
     { src: 'google:stock market today',               name: 'Google News' },
     { src: 'https://economictimes.indiatimes.com/rssfeedstopstories.cms', name: 'Economic Times' }
   ],
+  india: [
+    { src: 'google:nifty sensex stock market', name: 'Google News India', locale: 'in' },
+    { src: 'google:india stock market',        name: 'Google News India', locale: 'in' },
+    { src: 'https://economictimes.indiatimes.com/rssfeedstopstories.cms', name: 'Economic Times' },
+    { src: 'https://www.moneycontrol.com/rss/latestnews.xml',            name: 'Moneycontrol' }
+  ],
   ideas: [
     { src: 'https://feeds.content.dowjones.io/public/rss/mw_topstories', name: 'MarketWatch' },
     { src: 'https://www.investing.com/rss/news_25.rss',                  name: 'Investing.com' }
@@ -35,6 +41,7 @@ const NEWS_FEEDS = {
 };
 const NEWS_CURATED = {
   markets: ['Fed signals rate path stability as inflation cools', 'Nifty holds support; FII flows turn positive', 'Big tech earnings beat estimates, AI capex continues'],
+  india: ['Nifty, Sensex open higher as IT and banking lead', 'RBI in focus: inflation, liquidity and rate path', 'Rupee steadies as dollar index eases', 'FII flows turn positive into Indian equities'],
   ideas: ['Semiconductor orders rebound ahead of holidays', 'Banks screen attractive as credit growth picks up', 'Quality compounders on SIP-watch after the pullback'],
   gold: ['Gold nears record high as geopolitical risks persist', 'Oil prices steady as global demand outlook improves', 'Treasury yields drift lower on soft jobs data'],
   wallst: ['Wall Street weighs earnings vs macro data', 'S&P 500 holds range as yields ease', 'Nasdaq leads on AI-driver momentum']
@@ -287,9 +294,12 @@ function corsResponse(body, statusCode = 200, extraHeaders = {}) {
 }
 
 // ---- News (Google News RSS + reliable business feeds, server-side to dodge CORS) ----
-function buildGoogleNewsUrl(q) {
+function buildGoogleNewsUrl(q, locale) {
   const qq = encodeURIComponent(q).replace(/%20/g, '+');
-  return `https://news.google.com/rss/search?q=${qq}&hl=en-US&gl=US&ceid=US:en`;
+  const loc = locale === 'in'
+    ? 'hl=en-IN&gl=IN&ceid=IN:en'
+    : 'hl=en-US&gl=US&ceid=US:en';
+  return `https://news.google.com/rss/search?q=${qq}&${loc}`;
 }
 
 async function fetchAndParseRSS(url) {
@@ -326,7 +336,7 @@ async function handleNews(topic) {
   const items = [];
   for (const f of feeds) {
     try {
-      const url = f.src.startsWith('google:') ? buildGoogleNewsUrl(f.src.slice(7)) : f.src;
+      const url = f.src.startsWith('google:') ? buildGoogleNewsUrl(f.src.slice(7), f.locale) : f.src;
       const got = await fetchAndParseRSS(url);
       for (const it of got) {
         if (!items.some(y => y.title === it.title)) items.push({ ...it });
