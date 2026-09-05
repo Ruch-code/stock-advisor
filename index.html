@@ -598,6 +598,19 @@
     </div>
   </div>
 
+  <!-- Market Ticker: site-wide strip with NIFTY 50 · NIFTY Bank · India VIX (NSE) + SENSEX -->
+  <div class="bg-gradient-to-r from-keboard-dark via-keyboard-black to-keboard-dark border-b border-keyboard-grey/20 overflow-hidden">
+    <div id="marketTicker" class="flex items-center">
+      <div class="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 shrink-0" title="NSE official indices · site-wide live strip">
+        <span class="live-dot"></span>
+        <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Markets</span>
+      </div>
+      <div class="ticker-mask relative flex-1 overflow-hidden h-7">
+        <div id="mktTrack" class="ticker-track flex whitespace-nowrap items-center"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Main Layout -->
   <div class="max-w-7xl mx-auto px-4 py-6">
     <!-- Top Bar: Girl Illustration + Market Status -->
@@ -3508,6 +3521,84 @@ async function yahooQuoteJsonp(symbols, timeoutMs) {
   });
 }
 
+// ============================================================
+// SITE-WIDE MARKET TICKER (NIFTY 50 · NIFTY Bank · India VIX + SENSEX)
+// One JSONP call from the browser for all four NSE indices; falls back
+// to the proxy live-chart path (delayed) if the direct call is unreachable.
+// ============================================================
+const MKT_TICKER_SYMBOLS = [
+  { k: 'NIFTY 50',   sym: '^NSEI' },
+  { k: 'NIFTY Bank', sym: '^NSEBANK' },
+  { k: 'India VIX',  sym: '^INDIAVIX' },
+  { k: 'SENSEX',     sym: '^BSESN' }
+];
+
+function mktTileHTML(t) {
+  const has = t.v != null && t.chg != null;
+  const isVix = t.k === 'India VIX';
+  const up = has && t.chg >= 0;
+  // VIX colouring is inverted: rising volatility = anxiety (amber), falling = calm (green)
+  const cls = isVix && has ? (up ? 'text-yellow-400' : 'text-green-400') : (has ? (up ? 'text-green-400' : 'text-red-400') : 'text-keyboard-silver/40');
+  const arrow = has ? (isVix && up ? '⚠' : (up ? '▲' : '▼')) : '·';
+  const delayed = t.delayed ? '<span class="text-[8px] text-yellow-500/70 ml-1">DELAYED</span>' : '';
+  return '<span class="ticker-item">' +
+    '<b class="font-semibold text-keyboard-silver/80">' + t.k + '</b> ' +
+    '<span class="tabular-nums font-bold ' + cls + '">' + arrow + ' ' + (has ? formatNumber(t.v) : '--') + '</span> ' +
+    (has ? '<span class="tabular-nums ' + cls + '">(' + formatPercent(t.chg) + ')</span>' : '') +
+    delayed +
+    '</span>';
+}
+
+async function loadMarketTicker() {
+  const track = document.getElementById('mktTrack');
+  if (!track) return;
+  const placeholder = MKT_TICKER_SYMBOLS.map(m => mktTileHTML({ k: m.k, v: null, chg: null }));
+  track.innerHTML = placeholder.join('') + '<span class="ticker-item text-keyboard-silver/35">NSE official · refreshing…</span>';
+
+  // Primary: one browser-direct JSONP call for all four indices (residential IP)
+  const q = await yahooQuoteJsonp(MKT_TICKER_SYMBOLS.map(m => m.sym), 9000).catch(() => null);
+  const res = q && q.quoteResponse && q.quoteResponse.result;
+  if (res && res.length) {
+    const bySym = {};
+    res.forEach(x => { if (x) bySym[x.symbol] = x; });
+    const html = MKT_TICKER_SYMBOLS.map(m => {
+      const x = bySym[m.sym];
+      const has = x && x.regularMarketPrice != null;
+      return mktTileHTML({
+        k: m.k,
+        v: has ? x.regularMarketPrice : null,
+        chg: has && x.regularMarketChangePercent != null ? x.regularMarketChangePercent : null
+      });
+    });
+    track.innerHTML = html.join('') + '<span class="ticker-item text-keyboard-silver/35">NSE via Yahoo · live</span>';
+    return;
+  }
+
+  // Fallback: per-symbol proxy chart (may be delayed / rate-gated)
+  const out = [];
+  await Promise.all(MKT_TICKER_SYMBOLS.map(async (m) => {
+    try {
+      const candles = await fetchYahooQuoteData(m.sym, '1d', '5d');
+      if (candles && candles.length >= 2) {
+        const last = candles[candles.length - 1].close;
+        const prev = candles[candles.length - 2].close;
+        if (last != null && last > 0 && prev != null && prev > 0) {
+          out.push({ k: m.k, v: last, chg: ((last / prev) - 1) * 100, delayed: true });
+        }
+      }
+    } catch (e) { /* keep tile offline */ }
+  }));
+  if (out.length) {
+    const html = MKT_TICKER_SYMBOLS.map(m => {
+      const hit = out.find(o => o.k === m.k);
+      return mktTileHTML(hit || { k: m.k, v: null, chg: null, delayed: hit && hit.delayed });
+    });
+    track.innerHTML = html.join('') + '<span class="ticker-item text-keyboard-silver/35">NSE via Yahoo · delayed</span>';
+    return;
+  }
+  track.innerHTML = placeholder.join('') + '<span class="ticker-item text-yellow-500/70">free NSE feed unavailable — retrying</span>';
+}
+
 function rsiFromCloses(closes, period = 14) {
   if (!closes || closes.length < period + 1) return null;
   let gains = 0, losses = 0;
@@ -4039,6 +4130,9 @@ async function init() {
   // Load indices, market condition, macro + news ticker (TerminalFeed)
   await loadNewsTicker();
 
+  // Site-wide market index strip (NIFTY 50 / NIFTY Bank / India VIX / SENSEX)
+  loadMarketTicker();
+
   // Load chart data
   await loadChartData();
 
@@ -4061,7 +4155,7 @@ async function init() {
   startLiveUpdates();
 
   // Refresh market condition + ticker every 60s
-  setInterval(() => loadNewsTicker(), 60000);
+  setInterval(() => { loadNewsTicker(); loadMarketTicker(); }, 60000);
 
   // Price alert checks every 20s
   setInterval(() => checkAlerts(), 20000);
