@@ -297,6 +297,67 @@
       border-right: 1px solid rgba(124, 58, 237, 0.4); border-bottom: 1px solid rgba(124, 58, 237, 0.4);
       z-index: 46;
     }
+
+    /* ---------- Buy-me-a-coffee donation widget (footer) ---------- */
+    .donation { position: relative; display: inline-block; margin-bottom: 12px; }
+    .donate-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 16px; border-radius: 10px; cursor: pointer;
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(120, 113, 108, 0.12));
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      color: #e5e5e5; font-size: 12px; font-weight: 600;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    }
+    .donate-btn:hover {
+      border-color: rgba(168, 85, 247, 0.65);
+      box-shadow: 0 0 18px rgba(168, 85, 247, 0.25);
+      transform: translateY(-1px);
+    }
+    .donate-icon { width: 15px; height: 15px; color: #eab308; }
+    .donation-pop {
+      position: absolute; left: 50%; bottom: calc(100% + 10px);
+      transform: translateX(-50%) translateY(-4px) scale(0.97);
+      width: 280px; padding: 12px; text-align: left;
+      background: #141414; border: 1px solid rgba(124, 58, 237, 0.45); border-radius: 12px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.8), 0 0 22px rgba(124, 58, 237, 0.16);
+      opacity: 0; visibility: hidden; pointer-events: none; z-index: 48;
+      transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+    }
+    .donation-pop::after {
+      content: ''; position: absolute; left: 50%; top: 100%;
+      transform: translateX(-50%) rotate(45deg);
+      width: 10px; height: 10px; background: #141414;
+      border-right: 1px solid rgba(124, 58, 237, 0.45); border-bottom: 1px solid rgba(124, 58, 237, 0.45);
+      margin-top: -5px;
+    }
+    .donation:hover .donation-pop, .donation:focus-within .donation-pop {
+      opacity: 1; visibility: visible; pointer-events: auto;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+    .donation-title { font-size: 13px; font-weight: 700; color: #eab308; margin-bottom: 4px; }
+    .donation-sub { font-size: 10px; line-height: 1.45; color: #9ca3af; margin-bottom: 8px; }
+    .donation-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 4px; }
+    .donation-addr {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(192, 192, 192, 0.15); border-radius: 8px;
+      padding: 6px 8px;
+    }
+    .donation-addr span {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px;
+      color: #e5e5e5; word-break: break-all; line-height: 1.35;
+    }
+    .donation-copy {
+      flex-shrink: 0; font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 6px;
+      background: rgba(168, 85, 247, 0.18); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.35);
+    }
+    .donation-copy:hover { background: rgba(168, 85, 247, 0.32); }
+    .donation-copy.copied { background: rgba(34, 197, 94, 0.2); color: #4ade80; border-color: rgba(34, 197, 94, 0.35); }
+    .donation-hint { font-size: 9px; color: #6b7280; margin-top: 6px; line-height: 1.4; }
+    .donation-hint b { color: #d8b4fe; font-weight: 600; }
+
+    @media (max-width: 480px) {
+      .donation-pop { width: min(280px, 86vw); }
+    }
   </style>
 </head>
 <body class="keyboard-bg text-gray-300 overflow-x-hidden">
@@ -1061,6 +1122,25 @@
 
   <!-- Footer -->
   <footer class="border-t border-keyboard-grey/20 mt-8 py-6 text-center">
+    <div class="donation">
+      <button id="donateTrigger" class="key-press donate-btn" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" class="donate-icon" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M3 11h3v2H3zM18 11h3v2h-3zM5 10a7 7 0 0 1 14 0v1a4 4 0 0 1-7 3.3A4 4 0 0 1 5 11z" stroke-linejoin="round"/>
+          <path d="M12 7.5c-1-1.2-2.8-.7-2.8.8 0 1.4 2.3 1.7 2.8 3.2.5-1.5 2.8-1.8 2.8-3.2 0-1.5-1.8-2-2.8-.8z" fill="currentColor" stroke="none"/>
+        </svg>
+        <span>Buy me a coffee</span>
+      </button>
+      <div id="donatePop" class="donation-pop" role="region" aria-live="polite">
+        <p class="donation-title">☕ Buy me a coffee</p>
+        <p class="donation-sub">This took a lot of late nights. Support my work with a small token — every coffee keeps the free tools running.</p>
+        <p class="donation-label">Ethereum (ETH / ERC-20) address</p>
+        <div class="donation-addr">
+          <span id="donateAddr">0xdd1e9C99Fa2D42F48f5c5F0c155b48E9b31b9C42</span>
+          <button id="donateCopy" class="key-press donation-copy" onclick="copyDonationAddress()" title="Copy address">⧉ Copy</button>
+        </div>
+        <p class="donation-hint">Send only on the <b>Ethereum</b> network. Double-check the network before confirming.</p>
+      </div>
+    </div>
     <p class="text-xs text-keyboard-silver/40">StockPulse v1.0 - Not Financial Advice - Data from TerminalFeed, Yahoo Finance</p>
     <p class="text-[10px] text-purple-light/60 mt-2">Made by Ruchi Kandpal</p>
   </footer>
@@ -2282,6 +2362,42 @@ function escapeHtml(s) {
   const d = document.createElement('div');
   d.textContent = String(s);
   return d.innerHTML;
+}
+
+function copyDonationAddress() {
+  const addr = document.getElementById('donateAddr');
+  const btn = document.getElementById('donateCopy');
+  if (!addr || !btn) return;
+  const text = addr.textContent.trim();
+  const done = () => {
+    btn.textContent = '✓ Copied';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '⧉ Copy';
+      btn.classList.remove('copied');
+    }, 1800);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
+function fallbackCopy(text, done) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    done();
+  } catch (e) {
+    alertBanner('Manual copy: ' + text);
+  }
 }
 
 async function loadNewsTicker() {
