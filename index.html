@@ -278,6 +278,25 @@
     .idx-tip-row b { color: #d8b4fe; font-weight: 600; }
     .idx-tip-row .hl { color: #e5e5e5; }
     .idx-tip-note { font-size: 9px; color: #6b7280; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(192, 192, 192, 0.1); }
+
+    /* ---------- ABCD grade hover explainer (Expert Panel) ---------- */
+    .ab-chip { position: relative; cursor: help; }
+    .ab-chip:hover::after {
+      content: attr(data-ab);
+      position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%);
+      width: 210px; padding: 8px 9px; text-align: left; font-size: 9px; line-height: 1.45;
+      font-weight: 500; color: #d1d5db; white-space: normal; letter-spacing: 0.01em;
+      background: #141414; border: 1px solid rgba(124, 58, 237, 0.4); border-radius: 8px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.75), 0 0 16px rgba(124, 58, 237, 0.14);
+      z-index: 45;
+    }
+    .ab-chip:hover::before {
+      content: ''; position: absolute; left: 50%; bottom: calc(100% - 1px);
+      transform: translateX(-50%) rotate(45deg);
+      width: 8px; height: 8px; background: #141414;
+      border-right: 1px solid rgba(124, 58, 237, 0.4); border-bottom: 1px solid rgba(124, 58, 237, 0.4);
+      z-index: 46;
+    }
   </style>
 </head>
 <body class="keyboard-bg text-gray-300 overflow-x-hidden">
@@ -471,6 +490,8 @@
       <button onclick="showSection('oversold')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="oversold">Oversold</button>
       <button onclick="showSection('trending')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="trending">Trending</button>
       <button onclick="showSection('expertpanel')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="expertpanel">Expert Panel</button>
+
+      <button onclick="showSection('portfolio')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="portfolio">Portfolio Grader</button>
       <button onclick="showSection('brokers')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="brokers">Broker Charges</button>
       <span class="text-[9px] font-bold tracking-widest text-purple-light/60 px-2 whitespace-nowrap">MUTUAL FUNDS</span>
       <button onclick="showSection('mutualfunds')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium bg-keyboard-grey/30 text-keyboard-silver/70 hover:bg-keyboard-grey/50 whitespace-nowrap transition-all" data-section="mutualfunds">Mutual Funds</button>
@@ -857,6 +878,10 @@
           <div><span class="inline-flex items-center gap-1.5 mt-1"><span class="w-2 h-2 rounded-full bg-green-500"></span><span class="text-[10px] text-keyboard-silver/60">Live data</span></span></div>
         </div>
         <div class="flex flex-wrap gap-2 mb-4" id="epLegend"></div>
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+          <p class="text-[10px] text-keyboard-silver/45">A = core compounder → D = revival bet. Hover any grade pill for its full playbook.</p>
+          <button onclick="exportExpertPanelCsv()" class="key-press px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/70 text-[10px] font-semibold hover:bg-keyboard-grey/50 transition-colors">⬇ Export scores (CSV)</button>
+        </div>
         <div id="epUnavailable" class="hidden mb-4 rounded-lg bg-red-500/5 border border-red-500/20 p-3 text-xs text-red-300/80">
           <span class="font-semibold text-red-300">No live quotes reachable for scoring.</span> The panel needs candles to compute consistency, growth and margin of safety — it retries on refresh.
         </div>
@@ -867,6 +892,32 @@
           <div class="shimmer rounded-xl h-28"></div>
         </div>
         <p class="text-[10px] text-keyboard-silver/35 mt-4">Expert lenses are real investment philosophies; the numeric scoring is a transparent education model built from live prices + curated sector maps — not a recommendation to buy or sell. NSE symbols need a paid Indian-market data feed to light up.</p>
+      </div>
+    </div>
+
+    <!-- Portfolio Grader Section -->
+    <div id="section-portfolio" class="section hidden">
+      <div class="card rounded-2xl p-6 mb-6">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <div>
+            <h2 class="text-lg font-bold silver-text flex items-center gap-2">📊 Portfolio Grader</h2>
+            <p class="text-xs text-keyboard-silver/50 mt-1">Paste your own holdings — one symbol per line — and run each through the same 25-expert ABCD engine. See grade, consensus votes and the exact playbook for every name you already own.</p>
+          </div>
+        </div>
+        <div class="flex flex-col md:flex-row gap-3 md:items-end mb-2">
+          <div class="flex-1">
+            <textarea id="pfInput" rows="5" placeholder="MSFT&#10;AAPL&#10;HDFCBANK&#10;RELIANCE.NS&#10;— mix of US tickers and NSE symbols (NSE needs a paid feed)" class="w-full bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none font-mono"></textarea>
+            <div class="flex items-center gap-2 mt-2">
+              <button onclick="loadPortfolioGrader()" class="key-press px-4 py-2 rounded-lg bg-purple-glow/20 text-purple-light text-xs font-semibold hover:bg-purple-glow/35 transition-colors">Grade my portfolio</button>
+              <button onclick="document.getElementById('pfInput').value = SIGNAL_UNIVERSE.slice(0,10).map(u => u.s).join('\n'); loadPortfolioGrader();" class="key-press px-4 py-2 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/70 text-xs font-semibold hover:bg-keyboard-grey/50 transition-colors">Try a sample</button>
+              <span class="text-[10px] text-keyboard-silver/40">Grades every holding the same way the panel grades its picks.</span>
+            </div>
+          </div>
+        </div>
+        <div id="pfResults" class="space-y-3 mt-4"></div>
+        <div id="pfUnavailable" class="hidden mt-4 rounded-lg bg-red-500/5 border border-red-500/20 p-3 text-xs text-red-300/80">
+          <span class="font-semibold text-red-300">No live quotes reachable for grading.</span> Retry in a moment — free sources rate-limit hard right now.
+        </div>
       </div>
     </div>
 
@@ -1033,7 +1084,8 @@ const state = {
   lastFetchTime: 0,
   alertQuoteCache: new Map(),
   niftyLive: false,
-  roadmapTick: 0
+  roadmapTick: 0,
+  browserDirect: new Set()
 };
 
 // ============================================================
@@ -1672,18 +1724,20 @@ async function loadIndiaIndices(IN_MAP) {
   if (!filled.length) return;
   const tiles = IN_MAP.map(m =>
     updates[m.sym]
-      ? idxTile(m.name, m.sym, updates[m.sym].price, updates[m.sym].change, false)
-      : idxTileUnavailable(m.name, m.sym)
+      ? idxTile(m.name, m.sym, updates[m.sym].price, updates[m.sym].change, false, m.yahoo)
+      : idxTileUnavailable(m.name, m.sym, m.yahoo)
   ).join('');
   grid.innerHTML = tiles;
 }
 
-function idxTipMarkup(edu, stale, extra) {
+function idxTipMarkup(edu, stale, extra, sym) {
   if (!edu) return '';
   const local = edu.origin.startsWith('Local');
-  const fromLine = stale
-    ? '<b>Live source:</b> last refreshed data (delayed)'
-    : '<b>Live source:</b> ' + (local ? 'Yahoo Finance · NSE live feed · ' : 'TerminalFeed live quote · ') + extra;
+  const direct = sym && state.browserDirect.has(sym);
+  const srcTxt = stale
+    ? 'last refreshed data (delayed)'
+    : (direct ? 'Yahoo Finance · direct from your browser · ' : (local ? 'Yahoo Finance · NSE live feed · ' : 'TerminalFeed live quote · ')) + extra;
+  const fromLine = '<b>Live source:</b> ' + srcTxt;
   return '<div class="idx-tip" role="tooltip">' +
     '<div class="idx-tip-name">' + edu.name +
       '<span class="idx-tip-origin ' + (local ? 'local' : 'global') + '">' + edu.origin.split('·')[0].trim() + '</span>' +
@@ -1696,7 +1750,7 @@ function idxTipMarkup(edu, stale, extra) {
   '</div>';
 }
 
-function idxTile(name, sym, price, change, stale) {
+function idxTile(name, sym, price, change, stale, srcSym) {
   const isUp = change >= 0;
   const edu = INDEX_EDU[sym];
   const staleTag = stale ? '<span class="ml-1 text-[8px] text-yellow-500/80">DELAYED</span>' : '';
@@ -1708,7 +1762,7 @@ function idxTile(name, sym, price, change, stale) {
       <p class="text-[10px] text-keyboard-silver/50 mb-1">${name}${originTag}${staleTag}</p>
       <p class="text-sm font-bold silver-text">${formatNumber(price)}</p>
       <p class="text-xs ${isUp ? 'text-green-400' : 'text-red-400'}">${formatPercent(change)}</p>
-      ${idxTipMarkup(edu, stale, '$ ' + formatNumber(price))}
+      ${idxTipMarkup(edu, stale, '$ ' + formatNumber(price), srcSym || sym)}
     </div>
   `;
 }
@@ -1720,19 +1774,19 @@ function idxTileSkeleton(name) {
       <p class="text-[10px] text-keyboard-silver/50 mb-1">${name}</p>
       <p class="text-sm font-bold text-keyboard-silver/40">No data</p>
       <p class="text-xs text-yellow-500/70">offline</p>
-      ${idxTipMarkup(edu, true, 'pending refresh')}
+      ${idxTipMarkup(edu, true, 'pending refresh', name)}
     </div>
   `;
 }
 
-function idxTileUnavailable(name, sym) {
+function idxTileUnavailable(name, sym, srcSym) {
   const edu = INDEX_EDU[sym];
   return `
     <div class="idx-tile bg-keyboard-dark/50 rounded-xl p-3 border border-red-500/20 cursor-help">
       <p class="text-[10px] text-keyboard-silver/50 mb-1">${name}<span class="ml-1 text-[8px] px-1 rounded bg-red-500/15 text-red-400">Local</span></p>
       <p class="text-sm font-bold text-red-400/70">No live feed</p>
       <p class="text-[9px] text-red-400/60">Free sources gate NSE/BSE</p>
-      ${idxTipMarkup(edu, true, 'needs paid NSE/BSE feed')}
+      ${idxTipMarkup(edu, true, 'needs paid NSE/BSE feed', srcSym || sym)}
     </div>
   `;
 }
@@ -2102,6 +2156,7 @@ function showSection(name) {
     if (name === 'desk') { renderClock(); loadDesk(); }
     if (name === 'paper' && state.paperTopic) loadPaper();
     if (name === 'expertpanel') loadExpertPanel();
+    if (name === 'portfolio') loadPortfolioGrader();
     if (name === 'crypto') loadCrypto();
   } catch (e) { console.error('section load error', name, e); }
 }
@@ -2748,20 +2803,21 @@ async function loadNifty() {
         const cur = candles[candles.length - 1].close;
         const prev = candles[candles.length - 2].close;
         const chg = ((cur / prev) - 1) * 100;
-        const piv = computePivots(candles);
-        const hi = Math.max.apply(null, candles.map(c => c.high));
-        const lo = Math.min.apply(null, candles.map(c => c.low));
+        const realHist = candles.length > 15;
+        const piv = realHist ? computePivots(candles) : null;
+        const hi = realHist ? Math.max.apply(null, candles.map(c => c.high)) : cur;
+        const lo = realHist ? Math.min.apply(null, candles.map(c => c.low)) : cur;
         document.getElementById('niftyValue').textContent = nfmt(cur);
         const chgEl = document.getElementById('niftyChange');
-        chgEl.innerHTML = '<span class="' + (chg >= 0 ? 'text-green-400' : 'text-red-400') + '">' + (chg >= 0 ? '▲' : '▼') + ' ' + formatPercent(chg) + '</span> <span class="text-keyboard-silver/40">today · ' + (chg >= 0 ? 'higher' : 'lower') + '</span>';
-        document.getElementById('niftyStatus').innerHTML = '<span class="text-[10px] font-bold px-2 py-1 rounded bg-green-500/15 text-green-400">LIVE</span>';
-        // 52-week bands
-        document.getElementById('niftyBands').innerHTML = [
+        chgEl.innerHTML = '<span class="' + (chg >= 0 ? 'text-green-400' : 'text-red-400') + '">' + (chg >= 0 ? '▲' : '▼') + ' ' + formatPercent(chg) + '</span> <span class="text-keyboard-silver/40">' + (chg >= 0 ? 'higher' : 'lower') + (realHist ? ' today' : ' (live quote)') + '</span>';
+        document.getElementById('niftyStatus').innerHTML = (realHist ? '<span class="text-[10px] font-bold px-2 py-1 rounded bg-green-500/15 text-green-400">LIVE</span>' : '<span class="text-[10px] font-bold px-2 py-1 rounded bg-purple-glow/15 text-purple-light">LIVE · realtime quote</span>');
+        // 52-week bands (only from real history; browser-direct fallback is a live quote)
+        document.getElementById('niftyBands').innerHTML = realHist ? [
           ['52-week high', hi, 'text-red-400'],
           ['52-week low', lo, 'text-green-400'],
           ['Range width', ((hi - lo) / lo * 100).toFixed(1) + '%', 'text-purple-light'],
           ['vs 52-wk high', ((cur / hi - 1) * 100).toFixed(1) + '%', cur / hi > 0.95 ? 'text-red-400' : 'text-keyboard-silver/60']
-        ].map(r => '<div class="rounded-lg bg-keyboard-black/40 border border-keyboard-grey/20 p-2"><p class="text-[10px] text-keyboard-silver/50 mb-1">' + r[0] + '</p><p class="text-sm font-bold tabular-nums ' + r[2] + '">' + nfmt(r[1]) + '</p></div>').join('');
+        ].map(r => '<div class="rounded-lg bg-keyboard-black/40 border border-keyboard-grey/20 p-2"><p class="text-[10px] text-keyboard-silver/50 mb-1">' + r[0] + '</p><p class="text-sm font-bold tabular-nums ' + r[2] + '">' + nfmt(r[1]) + '</p></div>').join('') : '';
         // pivots
         if (piv) {
           const cells = [
@@ -2930,12 +2986,55 @@ async function fetchYahooQuoteData(symbol, interval, range) {
   const res = await fetchWithTimeout(url, {}, 15000);
   const d = await res.json();
   const r = (d && d.chart && d.chart.result && d.chart.result[0]) || null;
-  if (!r || !r.timestamp || !r.indicators || !r.indicators.quote || !r.indicators.quote[0]) return null;
-  const q = r.indicators.quote[0];
-  const o = q.open || [], h = q.high || [], l = q.low || [], c = q.close || [], v = q.volume || [];
-  return r.timestamp.map((t, i) => ({
-    time: t, open: o[i] ?? 0, high: h[i] ?? 0, low: l[i] ?? 0, close: c[i] ?? 0, volume: v[i] ?? 0
-  }));
+  if (r && r.timestamp && r.indicators && r.indicators.quote && r.indicators.quote[0]) {
+    const q = r.indicators.quote[0];
+    const o = q.open || [], h = q.high || [], l = q.low || [], c = q.close || [], v = q.volume || [];
+    return r.timestamp.map((t, i) => ({
+      time: t, open: o[i] ?? 0, high: h[i] ?? 0, low: l[i] ?? 0, close: c[i] ?? 0, volume: v[i] ?? 0
+    }));
+  }
+  if (/^\^/.test(symbol) && r && r.meta && r.meta.regularMarketPrice != null) {
+    const t = r.meta.regularMarketTime;
+    const px = r.meta.regularMarketPrice;
+    return [
+      { time: t - 86400, open: px, high: px, low: px, close: px, volume: 0 },
+      { time: t,         open: px, high: px, low: px, close: px, volume: 0 }
+    ];
+  }
+  if (/^\^/.test(symbol)) {
+    const q = await yahooQuoteJsonp([symbol]);
+    const qr = q && q.quoteResponse && q.quoteResponse.result && q.quoteResponse.result[0];
+    if (qr && qr.regularMarketPrice != null) {
+      state.browserDirect.add(symbol);
+      const cur = qr.regularMarketPrice;
+      let prev = qr.chartPreviousClose != null ? qr.chartPreviousClose : qr.regularMarketPreviousClose;
+      if (prev == null && qr.regularMarketChangePercent != null) prev = cur / (1 + qr.regularMarketChangePercent / 100);
+      const t = Math.floor(Date.now() / 1000);
+      return [
+        { time: t - 86400, open: prev, high: Math.max(cur, prev), low: Math.min(cur, prev), close: prev, volume: 0 },
+        { time: t,         open: cur,  high: cur, low: cur, close: cur, volume: 0 }
+      ];
+    }
+  }
+  return null;
+}
+
+async function yahooQuoteJsonp(symbols, timeoutMs) {
+  return new Promise((resolve) => {
+    const done = (data) => { cleanup(); resolve(data); };
+    const cb = 'yhooQ' + Date.now() + Math.floor(Math.random() * 1e4);
+    const scr = document.createElement('script');
+    const timer = setTimeout(() => done(null), timeoutMs || 8000);
+    function cleanup() {
+      clearTimeout(timer);
+      try { delete window[cb]; } catch (e) {}
+      if (scr.parentNode) scr.parentNode.removeChild(scr);
+    }
+    window[cb] = (data) => done(data);
+    scr.onerror = () => done(null);
+    scr.src = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + symbols.map(s => encodeURIComponent(s)).join(',') + '&cb=' + cb;
+    document.head.appendChild(scr);
+  });
 }
 
 function rsiFromCloses(closes, period = 14) {
@@ -3151,6 +3250,13 @@ const EP_STYLES = {
 const EP_CYCLICAL = { 'Banking':75, 'Autos & EV':72, 'Energy':66, 'Oil & Gas':62, 'Renewables':62, 'E-commerce':52, 'Semiconductors':55, 'Technology':42, 'IT':38, 'FMCG':22, 'Healthcare':25, 'Consumer':30, 'Payments':35, 'Energy & Telecom':58 };
 const EP_CAT_COLOR = { A: 'bg-green-500/15 text-green-400 border-green-500/30', B: 'bg-purple-glow/20 text-purple-light border-purple-glow/40', C: 'bg-amber-500/15 text-amber-400 border-amber-500/30', D: 'bg-red-500/15 text-red-300 border-red-500/30' };
 
+const EP_ABCD = {
+  A: { t: 'A — Established Compounder', d: 'Boring by design: consistent profits (66+), wide competitive moat (60+), low cyclicality. Load-bearing part of a portfolio — buy dips via SIP, hold 5+ years.' },
+  B: { t: 'B — Growth Engine', d: 'High quality with momentum: strong consistency and moat, meaningful growth optionality. Size at most ~10% of the portfolio, review quarterly, cut when the story breaks.' },
+  C: { t: 'C — Cyclical Play', d: 'Business amplifies the economic cycle (cyclical exposure 58+). Trade the cycle — accumulate at lows, sell into strength. Don’t marry it across cycles.' },
+  D: { t: 'D — Revival Bet', d: 'Fallen, beaten-down name with weak recent consistency (under 48) but a big margin of safety (15+). Satellite bet only — ≤5% of the portfolio with a wide stop-loss.' }
+};
+
 function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
 function panelInputs(candles, pick) {
@@ -3259,7 +3365,11 @@ function renderExpertPanel(data) {
   const legend = document.getElementById('epLegend');
   legend.innerHTML = ['BUY', 'HOLD', 'AVOID'].map(v =>
     '<span class="text-[10px] font-bold px-2 py-1 rounded ' + (v === 'BUY' ? 'bg-green-500/15 text-green-400' : v === 'HOLD' ? 'bg-amber-500/15 text-amber-400' : 'bg-red-500/15 text-red-400') + '">' + v + '</span>'
-  ).join('') + '<span class="text-[10px] text-keyboard-silver/50 self-center">consensus across all 25 experts</span>';
+  ).join('') + '<span class="text-[10px] text-keyboard-silver/50 self-center">consensus across all 25 experts</span>' +
+  '<span class="w-px self-stretch bg-keyboard-grey/20 mx-1"></span>' +
+  ['A', 'B', 'C', 'D'].map(c =>
+    '<span class="ab-chip rounded-lg border px-2 py-1 text-[9px] font-black ' + EP_CAT_COLOR[c] + '" data-ab="' + EP_ABCD[c].t + ' — ' + EP_ABCD[c].d + '">' + c + '</span>'
+  ).join('') + '<span class="text-[10px] text-keyboard-silver/50 self-center">grade = playbook · hover to read</span>';
 
   const sorted = data.scored.slice().sort((a, b) => 'ABCD'.indexOf(a.category.c) - 'ABCD'.indexOf(b.category.c) || b.inputs.consistency - a.inputs.consistency);
 
@@ -3284,10 +3394,10 @@ function renderExpertPanel(data) {
     const voteBar = '[BUY ' + (s.votes.BUY || 0) + ' · HOLD ' + (s.votes.HOLD || 0) + ' · AVOID ' + (s.votes.AVOID || 0) + ']';
     return '<div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4 hover:border-purple-glow/40 transition-colors">' +
       '<div class="flex items-center justify-between flex-wrap gap-2">' +
-        '<div class="flex items-center gap-3"><span class="rounded-lg border px-2.5 py-1 text-sm font-black ' + EP_CAT_COLOR[cat.c] + '">' + cat.c + '</span>' +
+        '<div class="flex items-center gap-3"><span class="ab-chip rounded-lg border px-2.5 py-1 text-sm font-black ' + EP_CAT_COLOR[cat.c] + '" data-ab="' + EP_ABCD[cat.c].t + ' — ' + EP_ABCD[cat.c].d + '">' + cat.c + '</span>' +
         '<div><p class="text-sm font-bold text-keyboard-light">' + escapeHtml(s.pick.n) + ' <span class="text-[10px] font-normal text-keyboard-silver/50">' + s.pick.s + ' · ' + s.pick.sect + '</span></p>' +
         '<p class="text-[10px] text-keyboard-silver/50">' + cat.label + ' — <span class="text-keyboard-silver/80">' + voteBar + '</span></p></div></div>' +
-        '<div class="flex items-center gap-1.5 text-[9px] font-bold">' + ['A', 'B', 'C', 'D'].map(c => '<span class="px-1.5 py-0.5 rounded ' + (s.category.c === c ? EP_CAT_COLOR[c] : 'text-keyboard-silver/30') + '">' + c + '</span>').join('') + '</div>' +
+        '<div class="flex items-center gap-1.5 text-[9px] font-bold">' + ['A', 'B', 'C', 'D'].map(c => '<span class="ab-chip px-1.5 py-0.5 rounded ' + (s.category.c === c ? EP_CAT_COLOR[c] : 'text-keyboard-silver/30') + '" data-ab="' + EP_ABCD[c].t + ' — ' + EP_ABCD[c].d + '">' + c + '</span>').join('') + '</div>' +
         '<button onclick="quickSetAlert(' + "'" + s.pick.s + "'" + ')" class="key-press text-[9px] font-bold uppercase tracking-wider text-purple-light/80 border border-purple-glow/30 rounded px-2 py-1 hover:bg-purple-glow/15 transition-colors shrink-0">＋ Set price alert</button>' +
       '</div>' +
       '<div class="flex flex-wrap gap-2 mt-3 text-[10px] text-keyboard-silver/60"><span>Consistency <b class="text-keyboard-light tabular-nums">' + Math.round(iv.consistency) + '</b></span><span>·</span><span>Moat <b class="text-keyboard-light tabular-nums">' + Math.round(iv.moat) + '</b></span><span>·</span><span>Growth <b class="text-keyboard-light tabular-nums">' + Math.round(iv.growth) + '</b></span><span>·</span><span>Cyclical <b class="text-keyboard-light tabular-nums">' + Math.round(iv.cyclical) + '</b></span><span>·</span><span>MOS <b class="' + (iv.mos >= 0 ? 'text-green-400' : 'text-red-400') + ' tabular-nums">' + iv.mos.toFixed(1) + '%</b></span></div>' +
@@ -3296,6 +3406,87 @@ function renderExpertPanel(data) {
   }).join('') +
   nseWatchlistBlock(data) +
   '<p class="text-[10px] text-keyboard-silver/40 pt-2">Market breadth for macro lens: ' + Math.round(data.breadth * 100) + '% advancers — ' + (data.breadth >= 0.5 ? 'bullish tone (macro = HOLD)' : 'risk-off tone (macro = AVOID)') + '. Scores are a transparent education model from live prices, not advice.</p>';
+}
+
+function exportExpertPanelCsv() {
+  const cached = getCached('expertPanel', 120000);
+  const rows = cached && cached.scored ? cached.scored : [];
+  if (!rows.length) { alertBanner('Score the panel first — open it once so the data loads.'); return; }
+  const head = 'symbol,name,sector,grade,grade_label,consistency,moat,growth,cyclical,margin_of_safety_pct,momentum,buy_votes,hold_votes,avoid_votes,price,breadth_pct';
+  const lines = rows.map(s => [
+    s.pick.s.replace(/[",]/g, ''), s.pick.n.replace(/[",]/g, ''), s.pick.sect.replace(/[",]/g, ''),
+    s.category.c, s.category.label.replace(/[",]/g, ''),
+    Math.round(s.inputs.consistency), Math.round(s.inputs.moat), Math.round(s.inputs.growth), Math.round(s.inputs.cyclical),
+    s.inputs.mos.toFixed(1), Math.round(s.inputs.momentum),
+    s.votes.BUY || 0, s.votes.HOLD || 0, s.votes.AVOID || 0,
+    s.price, Math.round(s.breadth * 100)
+  ].join(','));
+  const blob = new Blob([head + '\n' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'stockpulse-experts-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+}
+
+async function loadPortfolioGrader(force) {
+  const box = document.getElementById('pfResults');
+  const unavail = document.getElementById('pfUnavailable');
+  if (!box) return;
+  unavail.classList.add('hidden');
+  const text = (document.getElementById('pfInput').value || '').trim();
+  const symbols = [...new Set(text.split(/[\n,;\s]+/).map(s => s.trim().toUpperCase()).filter(s => /^[A-Z0-9.\^-]+$/.test(s)))];
+  if (!symbols.length) { alertBanner('Paste at least one symbol first — e.g. MSFT, or try the sample.'); return; }
+  if (symbols.length > 15) { alertBanner('Keep it to 15 symbols at a time — free feeds rate-limit hard.'); return; }
+  box.innerHTML = symbols.map(() => '<div class="shimmer rounded-xl h-20"></div>').join('');
+  const results = [];
+  const ungradeable = [];
+  for (const s of symbols) {
+    let inp = null, price = null;
+    try {
+      const candles = await fetchYahooQuoteData(s, '1d', '1y');
+      if (candles && candles.length >= 15) {
+        inp = panelInputs(candles, { s, sect: lookupSector(s) });
+        price = candles[candles.length - 1].close;
+      }
+    } catch (e) {}
+    if (!inp) { ungradeable.push(s); continue; }
+    const votes = {};
+    EXPERT_ROSTER.forEach(e => { const v = styleVote(e.style, inp, 0.5); votes[v.verdict] = (votes[v.verdict] || 0) + 1; });
+    const cat = abcCategory(inp);
+    const styleScores = {};
+    ['quality', 'growth', 'contrarian', 'momentum', 'macro', 'sector'].forEach(st => styleScores[st] = styleVote(st, inp, 0.5).score);
+    results.push({ s, price, inputs: inp, category: cat, votes, styleScores });
+  }
+  if (!results.length) { box.innerHTML = ''; unavail.classList.remove('hidden'); return; }
+  const isUs = s => !/\.(NS|BO)$/.test(s);
+  box.innerHTML = results.map(r => {
+    const cat = r.category, iv = r.inputs;
+    const voteBar = '[BUY ' + (r.votes.BUY || 0) + ' · HOLD ' + (r.votes.HOLD || 0) + ' · AVOID ' + (r.votes.AVOID || 0) + ']';
+    const name = lookupName(r.s) || r.s;
+    const gradable = isUs(r.s) || !state.niftyLive;
+    return '<div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4 hover:border-purple-glow/40 transition-colors">' +
+      '<div class="flex items-center justify-between flex-wrap gap-2">' +
+        '<div class="flex items-center gap-3"><span class="ab-chip rounded-lg border px-2.5 py-1 text-sm font-black ' + EP_CAT_COLOR[cat.c] + '" data-ab="' + EP_ABCD[cat.c].t + ' — ' + EP_ABCD[cat.c].d + '">' + cat.c + '</span>' +
+        '<div><p class="text-sm font-bold text-keyboard-light">' + escapeHtml(name) + ' <span class="text-[10px] font-normal text-keyboard-silver/50">' + r.s + (isUs(r.s) ? ' · US' : ' · NSE') + '</span></p>' +
+        '<p class="text-[10px] text-keyboard-silver/50">' + cat.label + ' — <span class="text-keyboard-silver/80">' + voteBar + '</span></p></div></div>' +
+        '<button onclick="quickSetAlert(' + "'" + r.s + "'" + ')" class="key-press text-[9px] font-bold uppercase tracking-wider text-purple-light/80 border border-purple-glow/30 rounded px-2 py-1 hover:bg-purple-glow/15 transition-colors shrink-0">＋ Set price alert</button>' +
+      '</div>' +
+      '<div class="flex flex-wrap gap-2 mt-3 text-[10px] text-keyboard-silver/60"><span>Price ' + (isUs(r.s) ? '$ ' : '₹ ') + nfmt(r.price) + '</span><span>·</span><span>Consistency <b class="text-keyboard-light tabular-nums">' + Math.round(iv.consistency) + '</b></span><span>·</span><span>Moat <b class="text-keyboard-light tabular-nums">' + Math.round(iv.moat) + '</b></span><span>·</span><span>Growth <b class="text-keyboard-light tabular-nums">' + Math.round(iv.growth) + '</b></span><span>·</span><span>MOS <b class="' + (iv.mos >= 0 ? 'text-green-400' : 'text-red-400') + ' tabular-nums">' + iv.mos.toFixed(1) + '%</b></span></div>' +
+      '<div class="mt-2 rounded-lg bg-keyboard-black/30 border border-keyboard-grey/15 p-2 text-[10px] text-keyboard-silver/70">' + cat.advice + '</div>' +
+    '</div>';
+  }).join('') + (ungradeable.length ? '<div class="rounded-lg bg-keyboard-black/30 border border-keyboard-grey/15 p-3 text-[10px] text-keyboard-silver/60">Couldn\u2019t grade (no live candles): <span class="font-semibold text-keyboard-silver/90">' + ungradeable.map(escapeHtml).join(', ') + '</span> — free feeds gate NSE/BSE; retry later.</div>' : '') +
+  '<p class="text-[10px] text-keyboard-silver/40 pt-2">Same 25 expert lenses, same ABCD model as the panel — applied to whichever names you paste. Education, not advice.</p>';
+}
+
+function lookupSector(sym) {
+  const hit = SIGNAL_UNIVERSE.find(u => u.s === sym);
+  return hit ? hit.sect : '';
+}
+
+function lookupName(sym) {
+  const hit = SIGNAL_UNIVERSE.find(u => u.s === sym);
+  return hit ? hit.n : '';
 }
 
 function nseWatchlistBlock(data) {
@@ -3310,7 +3501,7 @@ function nseWatchlistBlock(data) {
       const s = data.scored.find(x => x.pick.s === u.s);
       const cat = s.category;
       return '<div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4 hover:border-purple-glow/40 transition-colors">' +
-        '<div class="flex items-center gap-3 flex-wrap"><span class="rounded-lg border px-2.5 py-1 text-sm font-black ' + EP_CAT_COLOR[cat.c] + '">' + cat.c + '</span>' +
+        '<div class="flex items-center gap-3 flex-wrap"><span class="ab-chip rounded-lg border px-2.5 py-1 text-sm font-black ' + EP_CAT_COLOR[cat.c] + '" data-ab="' + EP_ABCD[cat.c].t + ' — ' + EP_ABCD[cat.c].d + '">' + cat.c + '</span>' +
         '<div><p class="text-sm font-bold text-keyboard-light">' + escapeHtml(u.n) + ' <span class="text-[10px] font-normal text-keyboard-silver/50">' + u.s + ' · ' + u.sect + '</span></p>' +
         '<p class="text-[10px] text-keyboard-silver/50">' + cat.label + '</p></div></div>' +
         '<div class="mt-2 rounded-lg bg-keyboard-black/30 border border-keyboard-grey/15 p-2 text-[10px] text-keyboard-silver/70">' + cat.advice + '</div></div>';
@@ -3384,7 +3575,7 @@ async function init() {
   // falling back to the dashboard); other sections lazy-load on tab click
   document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
   const lastTab = (function() { try { return localStorage.getItem('stockpulse_last_tab'); } catch (e) { return null; } })();
-  const validTabs = ['dashboard', 'desk', 'paper', 'signals', 'oversold', 'trending', 'expertpanel', 'brokers', 'mutualfunds', 'crypto'];
+  const validTabs = ['dashboard', 'desk', 'paper', 'signals', 'oversold', 'trending', 'expertpanel', 'portfolio', 'brokers', 'mutualfunds', 'crypto'];
   const restore = (lastTab && validTabs.indexOf(lastTab) !== -1) ? lastTab : 'dashboard';
   document.getElementById('marketToggle').textContent = state.market === 'US' ? 'US Market' : 'Indian Market';
   if (restore === 'dashboard') {
