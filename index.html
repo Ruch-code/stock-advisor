@@ -208,6 +208,76 @@
       0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.5); }
       50% { box-shadow: 0 0 25px 4px rgba(124, 58, 237, 0.35); }
     }
+
+    /* ---------- Custom creative cursor (fellow.ai style) ---------- */
+    @media (hover: hover) and (pointer: fine) {
+      body, body * { cursor: none !important; }
+      #cursorDot, #cursorRing, .cursor-spark {
+        position: fixed; left: 0; top: 0; pointer-events: none; z-index: 99999;
+      }
+      #cursorDot {
+        width: 6px; height: 6px; margin: -3px 0 0 -3px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #ffffff 0%, #d8b4fe 45%, rgba(124, 58, 237, 0.9) 100%);
+        box-shadow: 0 0 8px rgba(168, 85, 247, 0.9), 0 0 18px rgba(124, 58, 237, 0.5);
+        opacity: 0;
+        will-change: transform;
+      }
+      #cursorRing {
+        width: 34px; height: 34px; margin: -17px 0 0 -17px;
+        border-radius: 50%;
+        border: 1.5px solid rgba(168, 85, 247, 0.75);
+        box-shadow: inset 0 0 10px rgba(124, 58, 237, 0.25), 0 0 14px rgba(124, 58, 237, 0.2);
+        background: rgba(124, 58, 237, 0.04);
+        opacity: 0;
+        transition: width .18s ease, height .18s ease, margin .18s ease, border-color .18s ease, background .18s ease, transform .18s ease;
+        will-change: transform;
+      }
+      #cursorRing.is-hover {
+        width: 48px; height: 48px; margin: -24px 0 0 -24px;
+        border-color: rgba(34, 197, 94, 0.9);
+        background: rgba(34, 197, 94, 0.1);
+        box-shadow: 0 0 20px rgba(34, 197, 94, 0.4), inset 0 0 12px rgba(34, 197, 94, 0.2);
+      }
+      #cursorRing.is-down { transform: scale(0.72); }
+      .cursor-spark {
+        border-radius: 50%;
+        mix-blend-mode: screen;
+        will-change: transform, opacity;
+      }
+    }
+
+    /* ---------- Index tile hover tooltip (origin / source / India impact) ---------- */
+    .idx-tile { position: relative; }
+    .idx-tip {
+      position: absolute; left: 50%; top: calc(100% + 8px);
+      transform: translateX(-50%) translateY(-4px) scale(0.96);
+      width: 244px; padding: 10px; text-align: left;
+      background: #141414;
+      border: 1px solid rgba(124, 58, 237, 0.45);
+      border-radius: 10px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(124, 58, 237, 0.18);
+      opacity: 0; visibility: hidden; pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+      z-index: 40;
+    }
+    .idx-tile:hover .idx-tip, .idx-tile:focus-within .idx-tip {
+      opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0) scale(1);
+    }
+    .idx-tip-name {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      font-size: 11px; font-weight: 700; color: #e5e5e5; margin-bottom: 6px;
+    }
+    .idx-tip-origin {
+      font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+      padding: 2px 6px; border-radius: 999px; white-space: nowrap;
+    }
+    .idx-tip-origin.global { background: rgba(168, 85, 247, 0.18); color: #c4b5fd; }
+    .idx-tip-origin.local  { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+    .idx-tip-row { font-size: 10px; line-height: 1.45; color: #9ca3af; margin-bottom: 4px; }
+    .idx-tip-row b { color: #d8b4fe; font-weight: 600; }
+    .idx-tip-row .hl { color: #e5e5e5; }
+    .idx-tip-note { font-size: 9px; color: #6b7280; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(192, 192, 192, 0.1); }
   </style>
 </head>
 <body class="keyboard-bg text-gray-300 overflow-x-hidden">
@@ -940,6 +1010,7 @@
   <!-- Footer -->
   <footer class="border-t border-keyboard-grey/20 mt-8 py-6 text-center">
     <p class="text-xs text-keyboard-silver/40">StockPulse v1.0 - Not Financial Advice - Data from TerminalFeed, Yahoo Finance</p>
+    <p class="text-[10px] text-purple-light/60 mt-2">Made by Ruchi Kandpal</p>
   </footer>
 
 <script>
@@ -1484,14 +1555,14 @@ function initMiniChart() {
 // UI RENDERING
 // ============================================================
 const INDEX_EDU = {
-  SPY:      { name: 'S&P 500',        origin: 'Global · US',                                            source: 'S&P Dow Jones Indices (tracked by the SPY ETF)',      significance: 'Tracks the 500 largest US companies — roughly 80% of US market value.', impact: 'The world\u2019s default market health gauge; when it climbs, risk-on appetite spreads to most stocks.' },
-  QQQ:      { name: 'NASDAQ 100',     origin: 'Global · US',                                            source: 'Nasdaq exchange (tracked by the QQQ ETF)',            significance: 'Tracks the 100 biggest tech, AI & growth companies (excluding banks).', impact: 'The tech/AI thermometer — leads sentiment for innovation-driven stocks.' },
-  DIA:      { name: 'Dow Jones 30',   origin: 'Global · US',                                            source: 'S&P Dow Jones Indices (tracked by the DIA ETF)',      significance: 'Tracks 30 iconic US blue-chip companies like Apple, Goldman, J&J.', impact: 'America\u2019s oldest index; a classic gauge of big-business confidence.' },
-  IWM:      { name: 'Russell 2000',   origin: 'Global · US',                                            source: 'FTSE Russell (tracked by the IWM ETF)',              significance: 'Tracks about 2,000 small-cap US companies.', impact: 'Small-caps mirror domestic consumer health — they lead in economic upswings and are first to feel slowdowns.' },
-  NIFTY:    { name: 'NIFTY 50',       origin: 'Local · India',                                          source: 'National Stock Exchange (NSE)',                       significance: 'Tracks India\u2019s 50 largest companies across every major sector.', impact: 'India\u2019s primary benchmark — foreign & institutional money flow shows up here first.' },
-  SENSEX:   { name: 'SENSEX',         origin: 'Local · India',                                          source: 'Bombay Stock Exchange (BSE)',                          significance: 'Tracks 30 of India\u2019s bluest blue-chips.', impact: 'India\u2019s oldest index; a proxy for large-cap investor confidence.' },
-  BANKNIFTY:{ name: 'NIFTY Bank',     origin: 'Local · India',                                          source: 'National Stock Exchange (NSE)',                       significance: 'Tracks India\u2019s 12 biggest banking stocks.', impact: 'Banks drive credit cycles — strong signal for interest-rate and liquidity sentiment.' },
-  INDVIX:   { name: 'India VIX',      origin: 'Local · India',                                          source: 'National Stock Exchange (NSE)',                       significance: 'The market\u2019s fear gauge — expected 30-day swing in NIFTY.', impact: 'Rising = fear and hedging demand; falling = calm and confidence.' }
+  SPY:      { name: 'S&P 500',        origin: 'Global · US',                                            source: 'S&P Dow Jones Indices (tracked by the SPY ETF)',      significance: 'Tracks the 500 largest US companies — roughly 80% of US market value.', impact: 'The world\u2019s default market health gauge; when it climbs, risk-on appetite spreads to most stocks.', india: 'The yardstick for global money flow. When SPY falls hard, foreign investors pull out of emerging markets like India, dragging NIFTY and the rupee down — watch it as the earliest warning signal.' },
+  QQQ:      { name: 'NASDAQ 100',     origin: 'Global · US',                                            source: 'Nasdaq exchange (tracked by the QQQ ETF)',            significance: 'Tracks the 100 biggest tech, AI & growth companies (excluding banks).', impact: 'The tech/AI thermometer — leads sentiment for innovation-driven stocks.', india: 'Global tech mood directly moves Indian IT majors (TCS, Infosys, Wipro) and new-age internet names. A strong QQQ usually means more US tech spending at Indian outsourcing firms.' },
+  DIA:      { name: 'Dow Jones 30',   origin: 'Global · US',                                            source: 'S&P Dow Jones Indices (tracked by the DIA ETF)',      significance: 'Tracks 30 iconic US blue-chip companies like Apple, Goldman, J&J.', impact: 'America\u2019s oldest index; a classic gauge of big-business confidence.', india: 'Blue-chip confidence here reflects global consumption strength — supportive for Indian large-caps that export or partner with US majors. A weak DIA hints at softer global demand ahead.' },
+  IWM:      { name: 'Russell 2000',   origin: 'Global · US',                                            source: 'FTSE Russell (tracked by the IWM ETF)',              significance: 'Tracks about 2,000 small-cap US companies.', impact: 'Small-caps mirror domestic consumer health — they lead in economic upswings and are first to feel slowdowns.', india: 'The canary for the US consumer. A healthy Russell suggests stable global demand, which typically benefits Indian mid & small cap names and export-focused sectors like gems, textiles and IT services.' },
+  NIFTY:    { name: 'NIFTY 50',       origin: 'Local · India',                                          source: 'National Stock Exchange (NSE)',                       significance: 'Tracks India\u2019s 50 largest companies across every major sector.', impact: 'India\u2019s primary benchmark — foreign & institutional money flow shows up here first.', india: 'This is your home gauge — buy/sell signals here reflect what Indian investors are actually doing with their own money, before it shows up in any global index.' },
+  SENSEX:   { name: 'SENSEX',         origin: 'Local · India',                                          source: 'Bombay Stock Exchange (BSE)',                          significance: 'Tracks 30 of India\u2019s bluest blue-chips.', impact: 'India\u2019s oldest index; a proxy for large-cap investor confidence.', india: 'The granddaddy of Indian indices, watched by every local fund manager. It moves with the NIFTY but skews even more toward heavyweight banking and energy stocks.' },
+  BANKNIFTY:{ name: 'NIFTY Bank',     origin: 'Local · India',                                          source: 'National Stock Exchange (NSE)',                       significance: 'Tracks India\u2019s 12 biggest banking stocks.', impact: 'Banks drive credit cycles — strong signal for interest-rate and liquidity sentiment.', india: 'The most Indian of them all: banks carry roughly one-third of NIFTY\u2019s weight. If BANKNIFTY lifts while NIFTY stalls, it usually signals falling loan stress and confidence in domestic credit.' },
+  INDVIX:   { name: 'India VIX',      origin: 'Local · India',                                          source: 'National Stock Exchange (NSE)',                       significance: 'The market\u2019s fear gauge — expected 30-day swing in NIFTY.', impact: 'Rising = fear and hedging demand; falling = calm and confidence.', india: 'India\u2019s own panic meter. When INDVIX spikes past 18\u201320, options sellers demand huge premiums and Indian traders turn defensive — a good time to trim leverage and keep cash.' }
 };
 
 function renderIndicesEdu() {
@@ -1576,6 +1647,23 @@ function renderIndices(feedData, economicData, fearGreed) {
   renderMarketStatus(macro);
 }
 
+function idxTipMarkup(edu, stale, extra) {
+  if (!edu) return '';
+  const fromLine = stale
+    ? '<b>Live source:</b> last refreshed data (delayed)'
+    : '<b>Live source:</b> TerminalFeed live quote · ' + extra;
+  return '<div class="idx-tip" role="tooltip">' +
+    '<div class="idx-tip-name">' + edu.name +
+      '<span class="idx-tip-origin ' + (edu.origin.startsWith('Global') ? 'global' : 'local') + '">' + edu.origin.split('·')[0].trim() + '</span>' +
+    '</div>' +
+    '<div class="idx-tip-row"><b>What it is:</b> <span class="hl">' + edu.significance + '</span></div>' +
+    '<div class="idx-tip-row"><b>Origin / whose index:</b> <span class="hl">' + edu.source + '</span></div>' +
+    '<div class="idx-tip-row">' + fromLine + '</div>' +
+    '<div class="idx-tip-row"><b>What it means for Indian markets:</b> <span class="hl">' + edu.india + '</span></div>' +
+    '<div class="idx-tip-note">' + edu.impact + '</div>' +
+  '</div>';
+}
+
 function idxTile(name, sym, price, change, stale) {
   const isUp = change >= 0;
   const edu = INDEX_EDU[sym];
@@ -1583,22 +1671,24 @@ function idxTile(name, sym, price, change, stale) {
   const originTag = edu
     ? `<span class="ml-1 text-[8px] px-1 rounded ${edu.origin.startsWith('Global') ? 'bg-purple-glow/15 text-purple-light' : 'bg-green-500/15 text-green-400'}">${edu.origin.split('·')[0]}</span>`
     : '';
-  const title = edu ? `${edu.name}: ${edu.significance} ${edu.impact}` : name;
   return `
-    <div class="bg-keyboard-dark/50 rounded-xl p-3 border border-keyboard-grey/20 cursor-help transition-all hover:border-purple-glow/40" title="${title}">
+    <div class="idx-tile bg-keyboard-dark/50 rounded-xl p-3 border border-keyboard-grey/20 cursor-help transition-all hover:border-purple-glow/40">
       <p class="text-[10px] text-keyboard-silver/50 mb-1">${name}${originTag}${staleTag}</p>
       <p class="text-sm font-bold silver-text">${formatNumber(price)}</p>
       <p class="text-xs ${isUp ? 'text-green-400' : 'text-red-400'}">${formatPercent(change)}</p>
+      ${idxTipMarkup(edu, stale, '$ ' + formatNumber(price))}
     </div>
   `;
 }
 
 function idxTileSkeleton(name) {
+  const edu = INDEX_EDU[name.split(' ')[0].toUpperCase()] || null;
   return `
-    <div class="bg-keyboard-dark/50 rounded-xl p-3 border border-keyboard-grey/20">
+    <div class="idx-tile bg-keyboard-dark/50 rounded-xl p-3 border border-keyboard-grey/20">
       <p class="text-[10px] text-keyboard-silver/50 mb-1">${name}</p>
       <p class="text-sm font-bold text-keyboard-silver/40">No data</p>
       <p class="text-xs text-yellow-500/70">offline</p>
+      ${idxTipMarkup(edu, true, 'pending refresh')}
     </div>
   `;
 }
@@ -1606,10 +1696,11 @@ function idxTileSkeleton(name) {
 function idxTileUnavailable(name, sym) {
   const edu = INDEX_EDU[sym];
   return `
-    <div class="bg-keyboard-dark/50 rounded-xl p-3 border border-red-500/20 cursor-help" title="${edu ? edu.significance : name}">
+    <div class="idx-tile bg-keyboard-dark/50 rounded-xl p-3 border border-red-500/20 cursor-help">
       <p class="text-[10px] text-keyboard-silver/50 mb-1">${name}<span class="ml-1 text-[8px] px-1 rounded bg-red-500/15 text-red-400">Local</span></p>
       <p class="text-sm font-bold text-red-400/70">No live feed</p>
       <p class="text-[9px] text-red-400/60">Free sources gate NSE/BSE</p>
+      ${idxTipMarkup(edu, true, 'needs paid NSE/BSE feed')}
     </div>
   `;
 }
@@ -2045,33 +2136,51 @@ const CURATED_NEWS = [
 
 let tickerTimer = null;
 
+function tickerChip(label, cls) {
+  return '<span class="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded mr-1.5 align-middle ' + cls + '">' + label + '</span>';
+}
+
 function buildTickerItems(feedData, econ, fear) {
   const items = [];
   const rows = (feedData && Array.isArray(feedData.data)) ? feedData.data : [];
+  const india = state.market !== 'US';
 
-  // Market movers as headlines
+  // Market movers as headlines — tag each with its home market so the strip
+  // never looks mismatched next to the index row (US vs India context).
   rows.filter(r => r.symbol && typeof r.change_percent === 'number')
     .slice(0, 10)
     .forEach(r => {
       const up = r.change_percent >= 0;
       const color = up ? '#22c55e' : '#ef4444';
       items.push({
-        text: `<span style="color:${color}">${r.change_percent >= 0 ? '▲' : '▼'}</span> ${escapeHtml(r.name || r.symbol)} ${formatPercent(r.change_percent)} <span class="sep">•</span> <span class="text-keyboard-silver/50">${r.price}</span>`
+        text: tickerChip(india ? 'GLOBAL' : 'US', india ? 'bg-purple-glow/15 text-purple-light' : 'bg-purple-glow/15 text-purple-light') + `<span style="color:${color}">${r.change_percent >= 0 ? '▲' : '▼'}</span> ${escapeHtml(r.name || r.symbol)} ${formatPercent(r.change_percent)} <span class="sep">•</span> <span class="text-keyboard-silver/50">${r.price}</span>`
       });
     });
 
-  // Macro headlines
+  // Macro headlines — labelled as global context, useful for Indian stocks too
   if (econ && econ.data) {
     const e = econ.data;
-    items.push({ text: `Fed funds rate at ${e.fed_rate.value}% <span class="sep">•</span> 10Y yield ${e.yield_10y.value}% <span class="sep">•</span> Unemployment ${e.unemployment.value}% <span class="sep">•</span> GDP growth ${e.gdp_growth.value}%` });
+    items.push({ text: tickerChip('GLOBAL', 'bg-purple-glow/15 text-purple-light') + `Fed funds ${e.fed_rate.value}% <span class="sep">•</span> 10Y yield ${e.yield_10y.value}% <span class="sep">•</span> Unemployment ${e.unemployment.value}% <span class="sep">•</span> US GDP ${e.gdp_growth.value}%` });
   }
   if (fear && fear.data) {
-    items.push({ text: `Market sentiment: ${fear.data.label} (${fear.data.value}/100)` });
+    items.push({ text: tickerChip('SENTIMENT', 'bg-amber-500/15 text-amber-400') + `Market sentiment: ${fear.data.label} (${fear.data.value}/100)` });
+  }
+
+  // India-context headlines: when on Indian Market, lead with Indian names
+  const INDIA_NEWS = [
+    'Nifty Holds Support; FII Flows Turn Positive',
+    'Rupee Steadies as Dollar Index Eases',
+    'RBI Focus: Inflation, Liquidity & Rate Path in Focus'
+  ];
+  if (india) {
+    INDIA_NEWS.forEach(n => items.push({ text: tickerChip('INDIA', 'bg-green-500/15 text-green-400') + n + ' <span class="sep">•</span>', fallback: true }));
+  } else {
+    items.push({ text: tickerChip('INDIA', 'bg-green-500/15 text-green-400') + 'Nifty Holds Support; FII Flows Turn Positive <span class="sep">•</span>', fallback: true });
   }
 
   // Fall back to curated headlines if we have too few live items
-  if (items.length < 5) {
-    CURATED_NEWS.forEach(n => items.push({ text: n + ' <span class="sep">•</span>', fallback: true }));
+  if (items.length < 6) {
+    CURATED_NEWS.forEach(n => items.push({ text: tickerChip('MARKETS', 'bg-keyboard-grey/40 text-keyboard-silver/70') + n + ' <span class="sep">•</span>', fallback: true }));
   }
 
   return items;
@@ -3135,7 +3244,41 @@ function renderExpertPanel(data) {
       '<div class="mt-2 rounded-lg bg-keyboard-black/30 border border-keyboard-grey/15 p-2 text-[10px] text-keyboard-silver/70">' + cat.advice + '</div>' +
       detail + '</div>';
   }).join('') +
+  nseWatchlistBlock(data) +
   '<p class="text-[10px] text-keyboard-silver/40 pt-2">Market breadth for macro lens: ' + Math.round(data.breadth * 100) + '% advancers — ' + (data.breadth >= 0.5 ? 'bullish tone (macro = HOLD)' : 'risk-off tone (macro = AVOID)') + '. Scores are a transparent education model from live prices, not advice.</p>';
+}
+
+function nseWatchlistBlock(data) {
+  const scoredSyms = {};
+  (data.scored || []).forEach(s => { scoredSyms[s.pick.s] = true; });
+  const nsePicks = SIGNAL_UNIVERSE.filter(u => u.x === 'NSE');
+  const haveLive = nsePicks.filter(u => scoredSyms[u.s]);
+  const gated = nsePicks.filter(u => !scoredSyms[u.s]);
+  let html = '';
+  if (haveLive.length) {
+    html += haveLive.map(u => {
+      const s = data.scored.find(x => x.pick.s === u.s);
+      const cat = s.category;
+      return '<div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4 hover:border-purple-glow/40 transition-colors">' +
+        '<div class="flex items-center gap-3 flex-wrap"><span class="rounded-lg border px-2.5 py-1 text-sm font-black ' + EP_CAT_COLOR[cat.c] + '">' + cat.c + '</span>' +
+        '<div><p class="text-sm font-bold text-keyboard-light">' + escapeHtml(u.n) + ' <span class="text-[10px] font-normal text-keyboard-silver/50">' + u.s + ' · ' + u.sect + '</span></p>' +
+        '<p class="text-[10px] text-keyboard-silver/50">' + cat.label + '</p></div></div>' +
+        '<div class="mt-2 rounded-lg bg-keyboard-black/30 border border-keyboard-grey/15 p-2 text-[10px] text-keyboard-silver/70">' + cat.advice + '</div></div>';
+    }).join('');
+  }
+  if (gated.length) {
+    html += '<div class="rounded-xl bg-keyboard-black/30 border border-keyboard-grey/15 p-4">' +
+      '<p class="text-xs font-semibold text-keyboard-light mb-2">🇮🇳 Indian watchlist — NSE</p>' +
+      '<div class="grid grid-cols-1 md:grid-cols-2 gap-2">' +
+      gated.map(u => '<div class="rounded-lg bg-keyboard-black/20 border border-keyboard-grey/10 p-2.5 flex items-center justify-between gap-2">' +
+        '<div class="min-w-0"><p class="text-sm font-semibold text-keyboard-silver/70 truncate">' + escapeHtml(u.n) + ' <span class="text-[10px] font-normal text-keyboard-silver/40">NSE</span></p>' +
+        '<p class="text-[10px] text-keyboard-silver/40">' + u.sect + '</p></div>' +
+        '<span class="text-[9px] text-red-300/70 shrink-0">Needs paid NSE/BSE feed</span></div>').join('') +
+      '</div>' +
+      '<p class="text-[10px] text-keyboard-silver/40 mt-2">These 13 Indian blue-chips are listed above for visibility. Free sources gate NSE/BSE quotes, so the 25 experts can\u2019t score them yet — the moment a paid feed connects, they score automatically (same model as the US set).</p>' +
+    '</div>';
+  }
+  return html;
 }
 
 // ============================================================
@@ -3210,76 +3353,137 @@ async function init() {
 
 // ============================
 // CREATIVE MOUSE CURSOR EFFECT
-// Subtle particle trail following cursor
+// fellow.ai-style: glowing orb + lagging ring + spark trail + click bursts
+// Native arrow is hidden via CSS; we draw everything ourselves.
 // ============================
 (function() {
-  const particles = [];
-  const particleCount = 8;
-  const maxSize = 8;
-  const minSize = 3;
-  const baseColor = 'rgba(255, 255, 255, 0.6)';
+  const finePointer = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  if (!finePointer) return;
 
-  // Create particle elements
-  function createParticle() {
-    const el = document.createElement('div');
-    el.className = 'cursor-particle';
-    el.style.left = '-9999px';
-    el.style.top = '-9999px';
-    el.style.position = 'fixed';
-    el.style.pointerEvents = 'none';
-    el.style.width = (Math.random() * (maxSize - minSize) + minSize) + 'px';
-    el.style.height = el.style.width;
-    el.style.borderRadius = '50%';
-    el.style.background = baseColor;
-    el.style.opacity = Math.random() * 0.5 + 0.3;
-    el.style.transition = 'opacity 0.3s, transform 0.3s';
-    document.body.appendChild(el);
-    return el;
-  }
+  // Cursor core — small bright orb snapped to the exact pointer spot
+  const dot = document.createElement('div');
+  dot.id = 'cursorDot';
+  dot.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(dot);
 
-  // Initialize particles
-  for (let i = 0; i < particleCount; i++) {
-    particles.push(createParticle());
-  }
+  // Lagging halo ring that trails behind, grows over interactive elements
+  const ring = document.createElement('div');
+  ring.id = 'cursorRing';
+  ring.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(ring);
 
-  let mouseX = 0, mouseY = 0;
-  const particleX = [], particleY = [];
-  for (let i = 0; i < particleCount; i++) { particleX.push(mouseX); particleY.push(mouseY); }
+  const SPARK_COLORS = ['#a78bfa', '#22c55e', '#e5e5e5', '#7c3aed', '#d8b4fe'];
+  const sparks = [];
+  const sparkPoolSize = 60;
+  let sparkIdle = 0;
 
-  // Track mouse position
-  document.addEventListener('mousemove', (e) => {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-  });
-
-  // Animation loop
-  function animate() {
-    // Update particle positions following mouse with lag
-    for (let i = 0; i < particleCount; i++) {
-      const p = particles[i];
-      // Add slight lag effect
-      particleX[i] += (mouseX - particleX[i]) * 0.15;
-      particleY[i] += (mouseY - particleY[i]) * 0.15;
-      
-      p.style.left = (particleX[i] - parseInt(p.style.width) / 2) + 'px';
-      p.style.top = (particleY[i] - parseInt(p.style.height) / 2) + 'px';
-      p.style.opacity = 0.3 - i * 0.05;
-      p.style.transform = `scale(${1 - i * 0.1})`;
+  function spawnSpark(x, y, vx, vy, life, size) {
+    if (sparks.length >= sparkPoolSize) {
+      const old = sparks.shift();
+      if (old && old.parentNode) old.parentNode.removeChild(old);
     }
-    
-    requestAnimationFrame(animate);
+    const s = document.createElement('div');
+    s.className = 'cursor-spark';
+    const sz = size || (Math.random() * 4 + 2);
+    s.style.width = sz + 'px';
+    s.style.height = sz + 'px';
+    s.style.background = SPARK_COLORS[Math.floor(Math.random() * SPARK_COLORS.length)];
+    s.style.left = x + 'px';
+    s.style.top = y + 'px';
+    s.style.opacity = '1';
+    document.body.appendChild(s);
+    sparks.push({ el: s, x, y, vx, vy, life, age: 0, base: sz });
   }
 
-  // Fade out on mouse leave
+  function burst(x, y, count) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = Math.random() * 4 + 1;
+      spawnSpark(x, y, Math.cos(a) * sp, Math.sin(a) * sp, 500 + Math.random() * 400, Math.random() * 5 + 3);
+    }
+  }
+
+  let mx = -100, my = -100;
+  let rx = -100, ry = -100;
+  let hoverTarget = null;
+  let down = false;
+  let lastMove = 0;
+
+  function isInteractive(el) {
+    if (!el || !el.closest) return false;
+    return !!el.closest('a, button, [onclick], .tab-btn, .key-press, .cursor-pointer, select, summary, input, textarea');
+  }
+
+  document.addEventListener('mousemove', (e) => {
+    mx = e.clientX;
+    my = e.clientY;
+    dot.style.opacity = '1';
+    ring.style.opacity = '1';
+    const now = performance.now();
+    if (now - lastMove > 14) {
+      lastMove = now;
+      if (Math.random() < 0.7) {
+        spawnSpark(mx, my,
+          (Math.random() - 0.5) * 1.2,
+          (Math.random() - 0.5) * 1.2,
+          380 + Math.random() * 300,
+          Math.random() * 2.5 + 1.2);
+      }
+    }
+    hoverTarget = isInteractive(e.target);
+    ring.classList.toggle('is-hover', hoverTarget);
+  }, { passive: true });
+
+  document.addEventListener('mousedown', () => {
+    down = true;
+    ring.classList.add('is-down');
+    burst(mx, my, 10);
+  });
+  document.addEventListener('mouseup', () => {
+    down = false;
+    ring.classList.remove('is-down');
+  });
+
   document.addEventListener('mouseleave', () => {
-    particles.forEach(p => { p.style.opacity = 0; p.style.transition = 'opacity 0.5s'; });
+    dot.style.opacity = '0';
+    ring.style.opacity = '0';
   });
 
-  document.addEventListener('mousemove', () => {
-    particles.forEach(p => { p.style.opacity = Math.random() * 0.5 + 0.3; p.style.transition = 'none'; });
-  });
+  // Common CSS classes whose hover we also want to reflect
+  document.addEventListener('mouseover', (e) => {
+    ring.classList.toggle('is-hover', isInteractive(e.target));
+  }, { passive: true });
 
-  animate();
+  function tick() {
+    // Ring eases toward the pointer with slight lag
+    rx += (mx - rx) * 0.16;
+    ry += (my - ry) * 0.16;
+    ring.style.transform = 'translate3d(' + rx + 'px,' + ry + 'px,0)';
+    dot.style.transform = 'translate3d(' + mx + 'px,' + my + 'px,0)';
+
+    // Animate sparks
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.age += 16;
+      s.x += s.vx;
+      s.y += s.vy;
+      s.vx *= 0.96;
+      s.vy *= 0.96;
+      const t = 1 - s.age / s.life;
+      if (t <= 0) {
+        if (s.el.parentNode) s.el.parentNode.removeChild(s.el);
+        sparks.splice(i, 1);
+        continue;
+      }
+      s.el.style.left = s.x + 'px';
+      s.el.style.top = s.y + 'px';
+      s.el.style.opacity = String(Math.max(0, t));
+      s.el.style.transform = 'scale(' + (0.4 + t * 0.8) + ')';
+    }
+
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 })();
 
   // Start app
