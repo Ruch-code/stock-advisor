@@ -410,6 +410,21 @@
 
     <!-- Dashboard Section -->
     <div id="section-dashboard" class="section">
+      <!-- Feature Roadmap / To-Dos -->
+      <div class="card rounded-2xl p-5 mb-6 glow-border">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <h2 class="text-base font-bold silver-text flex items-center gap-2">
+            🗂️ Feature Roadmap
+            <span class="text-[10px] font-bold px-2 py-1 rounded bg-purple-glow/15 text-purple-light" id="roadmapProgress">…</span>
+          </h2>
+          <span class="text-[10px] text-keyboard-silver/45">8 planned tools — auto-tracked as they go live</span>
+        </div>
+        <div class="w-full bg-keyboard-grey/20 rounded-full h-2 mb-4 overflow-hidden">
+          <div id="roadmapBar" class="h-full bg-purple-glow transition-all duration-700" style="width:0%"></div>
+        </div>
+        <ul id="roadmapList" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[12px]"></ul>
+      </div>
+
       <!-- Candlestick Chart + Pattern Info -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div class="lg:col-span-2 card rounded-2xl p-4">
@@ -945,7 +960,9 @@ const state = {
   cacheTime: new Map(),
   fetchCount: 0,
   lastFetchTime: 0,
-  alertQuoteCache: new Map()
+  alertQuoteCache: new Map(),
+  niftyLive: false,
+  roadmapTick: 0
 };
 
 // ============================================================
@@ -2494,6 +2511,39 @@ function renderClock() {
 }
 
 // ============================================================
+// FEATURE ROADMAP — 8 planned tools, tracked as they go live
+// ============================================================
+const ROADMAP = [
+  { id: 'clock',    icon: '🕘', title: 'Live Market Clock',          sub: 'NSE + US sessions, weekends & holidays with next-open countdown', live: () => true },
+  { id: 'nifty',    icon: '📊', title: 'NIFTY Market Desk',          sub: '52-wk bands, classic pivots & market map',                         live: () => !!state.niftyLive },
+  { id: 'commods',  icon: '🥇', title: 'Commodities Dashboard',      sub: 'Gold, silver, crude & dollar ETFs with plain-English meaning',      live: () => true },
+  { id: 'paper',    icon: '📰', title: 'Daily Finance Paper',        sub: 'Multi-source market news (ET, CNBC, MarketWatch, Investing)',       live: () => true },
+  { id: 'signals',  icon: '📈', title: 'Stock Signals',              sub: '26 picks ranked by momentum with candlestick pattern callouts',    live: () => true },
+  { id: 'panel',    icon: '🧠', title: 'ABCD Expert Panel',          sub: '25 Indian experts, 6 scoring lenses & ABCD verdicts',               live: () => true },
+  { id: 'crypto',   icon: '🪙', title: 'Crypto Guide (India)',       sub: 'Binance flow, KYC, allocation buckets, tax & traps',                live: () => true },
+  { id: 'mfunds',   icon: '🏦', title: 'Mutual Funds',               sub: 'Top fund families, SIPs & calculators',                            live: () => true }
+];
+
+function renderRoadmap() {
+  const list = document.getElementById('roadmapList');
+  const progress = document.getElementById('roadmapProgress');
+  const bar = document.getElementById('roadmapBar');
+  if (!list) return;
+  const done = ROADMAP.filter(r => r.live()).length;
+  const total = ROADMAP.length;
+  list.innerHTML = ROADMAP.map(r => {
+    const on = r.live();
+    return '<li class="flex items-start gap-2.5 rounded-lg px-3 py-2 ' + (on ? 'bg-green-500/5 border border-green-500/15' : 'bg-keyboard-black/30 border border-keyboard-grey/20') + '">' +
+      '<span class="mt-0.5 text-sm">' + (on ? '✅' : '🟨') + '</span>' +
+      '<div class="min-w-0"><p class="font-semibold ' + (on ? 'text-keyboard-light' : 'text-keyboard-silver/70') + '">' + r.icon + ' ' + escapeHtml(r.title) + '</p>' +
+      '<p class="text-[10px] text-keyboard-silver/45 leading-snug">' + escapeHtml(r.sub) + '</p>' +
+      '<p class="text-[9px] mt-0.5 ' + (on ? 'text-green-400/80' : 'text-amber-400/70') + ' font-bold">' + (on ? '● LIVE' : '○ PENDING — needs a paid NSE/BSE data feed') + '</p></div></li>';
+  }).join('');
+  progress.textContent = done + '/' + total + ' live';
+  bar.style.width = (done / total * 100).toFixed(0) + '%';
+}
+
+// ============================================================
 // NIFTY MARKET DESK — 52-wk bands, classic pivots, market map
 // ============================================================
 const NIFTY_SYMBOLS = ['NIFTY', 'NIFTY.NS', 'NIFTY50', 'NIFTY.NSE'];
@@ -2566,6 +2616,8 @@ async function loadNifty() {
           document.getElementById('marketMap').innerHTML = buildMarketMap(cur, piv, hi, lo);
         }
         unavail.classList.add('hidden');
+        state.niftyLive = true;
+        renderRoadmap();
         return;
       }
     } catch (e) { /* try next symbol */ }
@@ -3122,10 +3174,11 @@ async function init() {
   initChart();
   initMiniChart();
 
-  // Render static data + alerts + indices explainer
+  // Render static data + alerts + indices explainer + roadmap
   renderQuickPicks();
   renderAlerts();
   renderIndicesEdu();
+  renderRoadmap();
 
   // Load indices, market condition, macro + news ticker (TerminalFeed)
   await loadNewsTicker();
