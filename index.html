@@ -1620,17 +1620,20 @@ function renderIndices(feedData, economicData, fearGreed) {
     });
     conditionData = US_INDEX_MAP.map(m => bySym[m.sym]).filter(Boolean);
   } else {
-    // TerminalFeed is US-centric; fall back to a local NSE-based estimate
+    // TerminalFeed is US-centric; Indian indices come straight from the proxy
+    // (Yahoo NSE feed, no crumb required) — fetch in the background, upgrade
+    // tiles as soon as live prices arrive.
     const IN_MAP = [
-      { name: 'NIFTY 50', sym: 'NIFTY', base: 24500, spread: 200 },
-      { name: 'SENSEX', sym: 'SENSEX', base: 81000, spread: 500 },
-      { name: 'NIFTY Bank', sym: 'BANKNIFTY', base: 51500, spread: 300 },
-      { name: 'India VIX', sym: 'INDVIX', base: 13, spread: 3 }
+      { name: 'NIFTY 50', sym: 'NIFTY', yahoo: '^NSEI' },
+      { name: 'SENSEX', sym: 'SENSEX', yahoo: '^BSESN' },
+      { name: 'NIFTY Bank', sym: 'BANKNIFTY', yahoo: '^NSEBANK' },
+      { name: 'India VIX', sym: 'INDVIX', yahoo: '^INDIAVIX' }
     ];
-    indices = IN_MAP.map(({ name, sym, base, spread }) => ({
+    indices = IN_MAP.map(({ name, sym }) => ({
       name, sym, price: null, change: null, stale: true, isIndia: true
     }));
     conditionData = [];
+    loadIndiaIndices(IN_MAP);
   }
 
   // Render index tiles
@@ -1647,14 +1650,43 @@ function renderIndices(feedData, economicData, fearGreed) {
   renderMarketStatus(macro);
 }
 
+async function loadIndiaIndices(IN_MAP) {
+  const grid = document.getElementById('indicesGrid');
+  if (!grid) return;
+  const updates = {};
+  await Promise.all(IN_MAP.map(async (m) => {
+    try {
+      const candles = await fetchYahooQuoteData(m.yahoo, '1d', '5d');
+      if (candles && candles.length >= 2) {
+        const last = candles[candles.length - 1];
+        const prev = candles[candles.length - 2];
+        updates[m.sym] = {
+          price: last.close,
+          change: ((last.close / prev.close) - 1) * 100,
+          stale: false
+        };
+      }
+    } catch (e) { /* keep tile offline */ }
+  }));
+  const filled = IN_MAP.filter(m => updates[m.sym]);
+  if (!filled.length) return;
+  const tiles = IN_MAP.map(m =>
+    updates[m.sym]
+      ? idxTile(m.name, m.sym, updates[m.sym].price, updates[m.sym].change, false)
+      : idxTileUnavailable(m.name, m.sym)
+  ).join('');
+  grid.innerHTML = tiles;
+}
+
 function idxTipMarkup(edu, stale, extra) {
   if (!edu) return '';
+  const local = edu.origin.startsWith('Local');
   const fromLine = stale
     ? '<b>Live source:</b> last refreshed data (delayed)'
-    : '<b>Live source:</b> TerminalFeed live quote · ' + extra;
+    : '<b>Live source:</b> ' + (local ? 'Yahoo Finance · NSE live feed · ' : 'TerminalFeed live quote · ') + extra;
   return '<div class="idx-tip" role="tooltip">' +
     '<div class="idx-tip-name">' + edu.name +
-      '<span class="idx-tip-origin ' + (edu.origin.startsWith('Global') ? 'global' : 'local') + '">' + edu.origin.split('·')[0].trim() + '</span>' +
+      '<span class="idx-tip-origin ' + (local ? 'local' : 'global') + '">' + edu.origin.split('·')[0].trim() + '</span>' +
     '</div>' +
     '<div class="idx-tip-row"><b>What it is:</b> <span class="hl">' + edu.significance + '</span></div>' +
     '<div class="idx-tip-row"><b>Origin / whose index:</b> <span class="hl">' + edu.source + '</span></div>' +
@@ -2655,7 +2687,7 @@ function renderRoadmap() {
 // ============================================================
 // NIFTY MARKET DESK — 52-wk bands, classic pivots, market map
 // ============================================================
-const NIFTY_SYMBOLS = ['NIFTY', 'NIFTY.NS', 'NIFTY50', 'NIFTY.NSE'];
+const NIFTY_SYMBOLS = ['^NSEI', 'NIFTY50', 'NIFTY.NS'];
 
 function nfmt(n) {
   if (n == null || isNaN(n)) return '—';

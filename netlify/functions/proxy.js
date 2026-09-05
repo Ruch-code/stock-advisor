@@ -167,34 +167,40 @@ async function yahooCrumb(force = false) {
 }
 
 async function yahooChart(symbol, interval, range) {
-  let s;
-  try { s = await yahooCrumb(); } catch (e) { diag.push(`crumb error: ${e.message}`); throw e; }
+  // Crumb minting is often rate-limited (429) from DC IPs. The chart endpoint
+  // frequently works without a crumb, so mint best-effort and fall back to
+  // no-crumb requests instead of giving up entirely.
+  let s = null;
+  try { s = await yahooCrumb(); } catch (e) { diag.push(`crumb error (continuing w/o): ${e.message}`); }
 
   // Interleave hosts and crumb usage; retry with growing backoff for transient 429s
   const combos = [];
-  YAHOO_HOSTS.forEach((h) => combos.push({ host: h, crumb: true }));
-  YAHOO_HOSTS.forEach((h) => combos.push({ host: h, crumb: false }));
+  if (s) {
+    YAHOO_HOSTS.forEach((h) => combos.push({ host: h, crumb: true }));
+    YAHOO_HOSTS.forEach((h) => combos.push({ host: h, crumb: false }));
+  } else {
+    YAHOO_HOSTS.forEach((h) => combos.push({ host: h, crumb: false }));
+  }
   combos.push(...combos); // second pass after backoff
 
   let lastRes = null;
-  let waitMs = 800;
+  let waitMs = 600;
   for (const a of combos) {
     const url = `${a.host}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}` +
       (a.crumb ? `&crumb=${encodeURIComponent(s.crumb)}` : '');
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': UA,
-        'Accept': 'application/json, text/plain, */*',
-        'Referer': 'https://finance.yahoo.com/',
-        'Cookie': s.cookie
-      }
-    });
+    const headers = {
+      'User-Agent': UA,
+      'Accept': 'application/json, text/plain, */*',
+      'Referer': 'https://finance.yahoo.com/'
+    };
+    if (s) headers['Cookie'] = s.cookie;
+    const res = await fetch(url, { headers });
     lastRes = res;
     diag.push(`chart ${a.host} crumb=${a.crumb} -> ${res.status}`);
     if (res.status === 200) return res;
-    if (res.status === 401 || res.status === 403) break; // crumb gone stale; re-mint next call
+    if (res.status === 401 || res.status === 403 && s) break; // crumb gone stale; re-mint next call
     await sleep(waitMs);
-    waitMs = Math.min(3000, waitMs * 2);
+    waitMs = Math.min(2500, waitMs * 2);
   }
   return lastRes;
 }
@@ -219,7 +225,7 @@ export default async (event, context) => {
   if (params.mode === 'news') return await handleNews(params.topic || 'markets');
 
   if (!symbol) return corsResponse(JSON.stringify({ error: 'symbol is required' }), 400);
-  if (!/^[A-Za-z0-9.\-=]+$/.test(symbol)) return corsResponse(JSON.stringify({ error: 'invalid symbol' }), 400);
+  if (!/^[A-Za-z0-9.^\-=]+$/.test(symbol)) return corsResponse(JSON.stringify({ error: 'invalid symbol' }), 400);
 
   const cacheKey = `${symbol}|${interval}|${range}`;
   const fromCache = cached(cacheKey);
