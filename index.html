@@ -355,19 +355,79 @@
     .donation-hint { font-size: 9px; color: #6b7280; margin-top: 6px; line-height: 1.4; }
     .donation-hint b { color: #d8b4fe; font-weight: 600; }
 
-    /* ---------- LinkedIn footer link ---------- */
-    .linkedin-link {
+    /* ---------- LinkedIn "Let's connect" story ---------- */
+    .credit-wrap { position: relative; display: inline-block; }
+    .credit-link {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 20px; height: 20px; margin-left: 2px;
-      color: rgba(168, 85, 247, 0.55);
-      transition: color 0.18s ease, transform 0.15s ease, filter 0.18s ease;
+      gap: 6px; text-decoration: none;
+      transition: filter 0.18s ease;
     }
-    .linkedin-link:hover {
+    .credit-link .linkedin-icon {
+      width: 15px; height: 15px; color: rgba(168, 85, 247, 0.55);
+      transition: color 0.18s ease, transform 0.15s ease;
+    }
+    .credit-wrap:hover .linkedin-icon {
       color: #d8b4fe;
-      transform: translateY(-1px);
-      filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.45));
+      transform: rotate(-8deg) scale(1.15);
     }
-    .linkedin-icon { width: 15px; height: 15px; }
+    .connect-pop {
+      position: absolute; left: 50%; bottom: calc(100% + 12px);
+      transform: translateX(-50%) translateY(-6px) scale(0.97);
+      width: 230px; padding: 12px 14px;
+      background: #141414; border: 1px solid rgba(124, 58, 237, 0.45); border-radius: 12px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.8), 0 0 22px rgba(124, 58, 237, 0.16);
+      opacity: 0; visibility: hidden; pointer-events: none; z-index: 48;
+      transition: opacity 0.14s ease, transform 0.14s ease, visibility 0.14s;
+      display: flex; flex-direction: column; align-items: center; gap: 7px;
+    }
+    .connect-pop::after {
+      content: ''; position: absolute; left: 50%; top: 100%;
+      transform: translateX(-50%) rotate(45deg);
+      width: 10px; height: 10px; background: #141414;
+      border-right: 1px solid rgba(124, 58, 237, 0.45); border-bottom: 1px solid rgba(124, 58, 237, 0.45);
+      margin-top: -5px;
+    }
+    .credit-wrap:hover .connect-pop, .credit-wrap.tapped .connect-pop {
+      opacity: 1; visibility: visible; pointer-events: auto;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+    .cp-line, .cp-cta {
+      opacity: 0; transform: translateY(7px);
+      animation: cpLineIn 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .cp-1 { animation-delay: 0.1s; font-size: 10px; color: #9ca3af; font-style: italic; }
+    .cp-2 { animation-delay: 0.45s; font-size: 14px; font-weight: 800; color: #e9d5ff; }
+    .cp-2::after {
+      content: '_'; color: #a855f7;
+      animation: cpBlink 0.9s steps(1) infinite;
+    }
+    .cp-cta {
+      animation-delay: 0.85s;
+      display: inline-flex; align-items: center; gap: 5px;
+      margin-top: 2px; padding: 6px 14px; border-radius: 999px;
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.28), rgba(168, 85, 247, 0.12));
+      border: 1px solid rgba(168, 85, 247, 0.5);
+      color: #d8b4fe; font-size: 11px; font-weight: 700; text-decoration: none;
+      transition: box-shadow 0.18s ease, background 0.18s ease, transform 0.15s ease;
+    }
+    .cp-cta:hover {
+      background: rgba(168, 85, 247, 0.38);
+      box-shadow: 0 0 18px rgba(168, 85, 247, 0.35);
+      transform: translateY(-1px);
+    }
+    .cp-arrow { transition: transform 0.18s ease; }
+    .cp-cta:hover .cp-arrow { transform: translateX(3px); }
+    @keyframes cpLineIn {
+      from { opacity: 0; transform: translateY(7px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes cpBlink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    @media (max-width: 480px) {
+      .connect-pop { width: min(230px, 84vw); }
+    }
 
     @media (max-width: 480px) {
       .donation-pop { width: min(280px, 86vw); }
@@ -1156,15 +1216,19 @@
       </div>
     </div>
     <p class="text-xs text-keyboard-silver/40">StockPulse v1.0 - Not Financial Advice - Data from TerminalFeed, Yahoo Finance</p>
-    <p class="mt-2 inline-flex items-center justify-center gap-2">
-      <span class="text-sm font-bold text-purple-light">Made by Ruchi Kandpal</span>
-      <a href="https://www.linkedin.com/in/ruchi-k/" target="_blank" rel="noopener
-       " class="linkedin-link key-press" title="Connect with Ruchi on LinkedIn" aria-label="Ruchi Kandpal on LinkedIn">
+    <div id="creditBox" class="credit-wrap mt-2">
+      <a href="https://www.linkedin.com/in/ruchi-k/" target="_blank" rel="noopener" class="credit-link key-press" title="Connect with Ruchi on LinkedIn" aria-label="Ruchi Kandpal on LinkedIn">
+        <span class="text-sm font-bold text-purple-light">Made by Ruchi Kandpal</span>
         <svg viewBox="0 0 24 24" class="linkedin-icon" fill="currentColor" aria-hidden="true">
           <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM.22 8.31h4.56V23H.22V8.31zM8.34 8.31h4.37v2h.06c.61-1.16 2.1-2.38 4.33-2.38 4.63 0 5.49 3.05 5.49 7.01V23h-4.55v-7.17c0-1.71-.03-3.91-2.38-3.91-2.39 0-2.75 1.86-2.75 3.78V23H8.34V8.31z"/>
         </svg>
       </a>
-    </p>
+      <div id="connectPop" class="connect-pop" role="region" aria-live="polite">
+        <span class="cp-line cp-1">Hmm . . . what does this do?</span>
+        <span class="cp-line cp-2">Let's connect.</span>
+        <a class="cp-cta key-press" href="https://www.linkedin.com/in/ruchi-k/" target="_blank" rel="noopener">Visit LinkedIn <span class="cp-arrow">⟶</span></a>
+      </div>
+    </div>
   </footer>
 
 <script>
@@ -2421,6 +2485,24 @@ function fallbackCopy(text, done) {
     alertBanner('Manual copy: ' + text);
   }
 }
+
+function wireCreditStory() {
+  const cw = document.getElementById('creditBox');
+  if (!cw) return;
+  const coarse = window.matchMedia && window.matchMedia('(hover: none)').matches;
+  if (coarse) {
+    cw.addEventListener('click', (e) => {
+      if (e.target.closest('a')) return;
+      e.preventDefault();
+      cw.classList.toggle('tapped');
+    });
+    document.addEventListener('click', (e) => {
+      if (!cw.contains(e.target)) cw.classList.remove('tapped');
+    });
+  }
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireCreditStory);
+else wireCreditStory();
 
 async function loadNewsTicker() {
   try {
