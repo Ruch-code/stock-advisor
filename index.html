@@ -2445,6 +2445,7 @@ function clockState(key) {
   let countLabel, target = null;
   if (isOpen) { target = localToEpoch(cfg.tz, p.y, p.mo, p.d, ch, cm); countLabel = 'Closes in'; }
   else if (state === 'pre') { target = localToEpoch(cfg.tz, p.y, p.mo, p.d, oh, om); countLabel = 'Session opens in'; }
+  else if (weekend || hol) { countLabel = '—'; target = null; }
   else {
     for (let i = 1; i <= 8; i++) {
       const t = new Date(now.getTime());
@@ -3140,8 +3141,81 @@ async function init() {
   console.log('StockPulse initialized');
 }
 
-// Start app
-document.addEventListener('DOMContentLoaded', init);
+// ============================
+// CREATIVE MOUSE CURSOR EFFECT
+// Subtle particle trail following cursor
+// ============================
+(function() {
+  const particles = [];
+  const particleCount = 8;
+  const maxSize = 8;
+  const minSize = 3;
+  const baseColor = 'rgba(255, 255, 255, 0.6)';
+
+  // Create particle elements
+  function createParticle() {
+    const el = document.createElement('div');
+    el.className = 'cursor-particle';
+    el.style.left = '-9999px';
+    el.style.top = '-9999px';
+    el.style.position = 'fixed';
+    el.style.pointerEvents = 'none';
+    el.style.width = (Math.random() * (maxSize - minSize) + minSize) + 'px';
+    el.style.height = el.style.width;
+    el.style.borderRadius = '50%';
+    el.style.background = baseColor;
+    el.style.opacity = Math.random() * 0.5 + 0.3;
+    el.style.transition = 'opacity 0.3s, transform 0.3s';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  // Initialize particles
+  for (let i = 0; i < particleCount; i++) {
+    particles.push(createParticle());
+  }
+
+  let mouseX = 0, mouseY = 0;
+  let particleX = [], particleY = [];
+
+  // Track mouse position
+  document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  // Animation loop
+  function animate() {
+    // Update particle positions following mouse with lag
+    for (let i = 0; i < particleCount; i++) {
+      const p = particles[i];
+      // Add slight lag effect
+      particleX[i] += (mouseX - particleX[i]) * 0.15;
+      particleY[i] += (mouseY - particleY[i]) * 0.15;
+      
+      p.style.left = (particleX[i] - parseInt(p.style.width) / 2) + 'px';
+      p.style.top = (particleY[i] - parseInt(p.style.height) / 2) + 'px';
+      p.style.opacity = 0.3 - i * 0.05;
+      p.style.transform = `scale(${1 - i * 0.1})`;
+    }
+    
+    requestAnimationFrame(animate);
+  }
+
+  // Fade out on mouse leave
+  document.addEventListener('mouseleave', () => {
+    particles.forEach(p => { p.style.opacity = 0; p.style.transition = 'opacity 0.5s'; });
+  });
+
+  document.addEventListener('mousemove', () => {
+    particles.forEach(p => { p.style.opacity = Math.random() * 0.5 + 0.3; p.style.transition = 'none'; });
+  });
+
+  animate();
+})();
+
+  // Start app
+  document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
