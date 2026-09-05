@@ -517,7 +517,7 @@
     </div>
 
     <!-- Market Desk Section -->
-    <div id="section-desk" class="section hidden">
+    <div id="section-desk" class="section">
       <!-- Market Clock -->
       <div class="card rounded-2xl p-6 mb-6">
         <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -635,7 +635,7 @@
     </div>
 
     <!-- Daily Paper Section -->
-    <div id="section-paper" class="section hidden">
+    <div id="section-paper" class="section">
       <div class="card rounded-2xl p-6">
         <div class="border-b-4 border-keyboard-grey/30 pb-4 mb-4">
           <div class="flex items-end justify-between flex-wrap gap-2">
@@ -664,7 +664,7 @@
     </div>
 
     <!-- Oversold Stocks Section -->
-    <div id="section-oversold" class="section hidden">
+    <div id="section-oversold" class="section">
       <div class="card rounded-2xl p-6 mb-6">
         <h2 class="text-lg font-bold silver-text mb-2">Oversold Stocks (RSI &lt; 30)</h2>
         <p class="text-xs text-keyboard-silver/50 mb-4">Stocks with RSI below 30 may indicate oversold conditions and potential buying opportunities.</p>
@@ -678,7 +678,7 @@
     </div>
 
     <!-- Trending Sectors Section -->
-    <div id="section-trending" class="section hidden">
+    <div id="section-trending" class="section">
       <div class="card rounded-2xl p-6 mb-6">
         <h2 class="text-lg font-bold silver-text mb-2">Trending Sectors</h2>
         <p class="text-xs text-keyboard-silver/50 mb-4">Sectors trending due to global events and market impact.</p>
@@ -692,7 +692,7 @@
     </div>
 
     <!-- Stock Signals Section -->
-    <div id="section-signals" class="section hidden">
+    <div id="section-signals" class="section">
       <div class="card rounded-2xl p-6 mb-6">
         <div class="flex items-center justify-between flex-wrap gap-3 mb-2">
           <div>
@@ -719,7 +719,7 @@
     </div>
 
     <!-- Mutual Funds Section -->
-    <div id="section-mutualfunds" class="section hidden">
+    <div id="section-mutualfunds" class="section">
       <div class="card rounded-2xl p-6 mb-6">
         <h2 class="text-lg font-bold silver-text mb-2">Top Mutual Funds</h2>
         <p class="text-xs text-keyboard-silver/50 mb-4">Best performing mutual funds with risk-adjusted returns.</p>
@@ -733,7 +733,7 @@
     </div>
 
     <!-- Broker Charges Section -->
-    <div id="section-brokers" class="section hidden">
+    <div id="section-brokers" class="section">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="card rounded-2xl p-6">
           <h2 class="text-lg font-bold silver-text mb-2">US Brokers</h2>
@@ -750,7 +750,7 @@
   </div>
 
   <!-- ABCD Expert Panel Section -->
-    <div id="section-expertpanel" class="section hidden">
+    <div id="section-expertpanel" class="section">
       <div class="card rounded-2xl p-6 mb-6">
         <div class="flex items-center justify-between flex-wrap gap-3 mb-2">
           <div>
@@ -782,7 +782,7 @@
     </div>
 
     <!-- Crypto Guide Section -->
-    <div id="section-crypto" class="section hidden">
+    <div id="section-crypto" class="section">
       <div class="card rounded-2xl p-6 mb-6">
         <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
           <div>
@@ -1932,8 +1932,8 @@ function renderQuickPicks() {
 // ============================================================
 function showSection(name) {
   state.section = name;
-  document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
-  document.getElementById(`section-${name}`).classList.remove('hidden');
+  const target = document.getElementById(`section-${name}`);
+  if (target && target.scrollIntoView) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.remove('tab-active');
     b.classList.add('bg-keyboard-grey/30', 'text-keyboard-silver/70');
@@ -1944,7 +1944,7 @@ function showSection(name) {
     activeBtn.classList.remove('bg-keyboard-grey/30', 'text-keyboard-silver/70');
   }
 
-  // Load section data
+  // Load section data (sections stay visible; this just ensures data is fresh)
   if (name === 'oversold') renderOversold(state.market === 'US' ? STOCKS.US.oversold : STOCKS.India.oversold);
   if (name === 'trending') renderTrending(state.market === 'US' ? STOCKS.US.trending : STOCKS.India.trending);
   if (name === 'signals') loadStockSignals();
@@ -3124,6 +3124,14 @@ async function init() {
   // Load chart data
   await loadChartData();
 
+  // Load all feature sections eagerly (single-page layout shows everything at once)
+  renderClock();
+  loadDesk();
+  loadPaper();
+  loadStockSignals();
+  loadExpertPanel();
+  loadCrypto();
+
   // Start live updates
   startLiveUpdates();
 
@@ -3176,7 +3184,8 @@ async function init() {
   }
 
   let mouseX = 0, mouseY = 0;
-  let particleX = [], particleY = [];
+  const particleX = [], particleY = [];
+  for (let i = 0; i < particleCount; i++) { particleX.push(mouseX); particleY.push(mouseY); }
 
   // Track mouse position
   document.addEventListener('mousemove', (e) => {
