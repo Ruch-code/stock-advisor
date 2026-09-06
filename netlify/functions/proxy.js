@@ -323,7 +323,7 @@ async function tradesEconomicsQuotes() {
     let m;
     while ((m = labelRe.exec(html))) {
       const name = m[1].trim();
-      const look = html.slice(m.index, m.index + 500);
+      const look = html.slice(m.index, m.index + 600);
       const priceM = look.match(/id="p">\s*([0-9.,]+)\s*<\/td>/);
       const pctM = look.match(/id="pch"[^>]*>\s*([\-0-9.]+)%/);
       if (!priceM) continue;
