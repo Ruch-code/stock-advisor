@@ -406,6 +406,8 @@ export default async (event, context) => {
       if (st) st.v.filter((r) => needHeld.includes(r.symbol)).forEach((r) => put(r, false, false, true, st.t));
     }
 
+    if (wantDebug) diag.push(`merged rows: ${[...merged.keys()].join(',') || 'none'}`);
+
     const result = [...merged.values()];
     if (result.length) {
       const anyHeld = result.some((r) => r._held);
@@ -422,7 +424,7 @@ export default async (event, context) => {
       return corsResponse(JSON.stringify(body), 200, { 'Cache-Control': 'public, max-age=15' });
     }
     const body = { error: 'live sources unavailable', detail: 'all quote sources throttled' };
-    if (wantDebug) body.diag = diag.slice(-12);
+    if (wantDebug) body.diag = diag.slice(0, 40);
     return corsResponse(JSON.stringify(body), 200, { 'Cache-Control': 'public, max-age=30' });
   }
 
