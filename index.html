@@ -279,6 +279,30 @@
     .idx-tip-row .hl { color: #e5e5e5; }
     .idx-tip-note { font-size: 9px; color: #6b7280; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(192, 192, 192, 0.1); }
 
+    /* ---------- Invest Watchlist: candle pattern hover call-outs ---------- */
+    .watch-card { position: relative; }
+    .watch-card svg { display: block; }
+    .w-candle { pointer-events: all; }
+    .w-candle:hover { filter: brightness(1.45); stroke: #fff; stroke-width: 1.25; cursor: crosshair; }
+    .watch-tip {
+      position: fixed; width: 232px; max-height: 240px; overflow-y: auto; padding: 9px 10px;
+      text-align: left; background: #141414; border: 1px solid rgba(124, 58, 237, 0.45);
+      border-radius: 10px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.75), 0 0 20px rgba(124, 58, 237, 0.18);
+      opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.14s ease;
+      z-index: 99999; font-size: 10px; line-height: 1.45; color: #9ca3af;
+    }
+    .watch-tip.show { opacity: 1; visibility: visible; }
+    .watch-tip .wt-head { font-size: 10px; font-weight: 700; color: #e5e5e5; margin-bottom: 5px; }
+    .watch-tip .wt-ohlc { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 9px; color: #a3a3a3; margin-bottom: 6px; }
+    .watch-tip .wt-ohlc b { color: #e5e5e5; font-weight: 600; }
+    .watch-tip .wt-pats { border-top: 1px solid rgba(192, 192, 192, 0.12); padding-top: 5px; }
+    .watch-tip .wt-pat { margin-bottom: 5px; padding-left: 6px; border-left: 2px solid rgba(124, 58, 237, 0.35); }
+    .watch-tip .wt-pat b { color: #d8b4fe; font-weight: 700; }
+    .watch-tip .wt-pat .wt-buy  { color: #4ade80; font-weight: 700; }
+    .watch-tip .wt-pat .wt-sell { color: #f87171; font-weight: 700; }
+    .watch-tip .wt-pat .wt-hold { color: #facc15; font-weight: 700; }
+    .watch-tip .wt-none { color: #6b7280; font-style: italic; }
+
     /* ---------- ABCD grade hover explainer (Expert Panel) ---------- */
     .ab-chip { position: relative; cursor: help; }
     .ab-chip:hover::after {
@@ -873,6 +897,31 @@
 
     <!-- Dashboard Section -->
     <div id="section-dashboard" class="section">
+      <!-- Invest Watchlist: candlestick + pattern meaning on hover -->
+      <div class="card rounded-2xl p-5 mb-6 glow-border">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <h2 class="text-base font-bold silver-text flex items-center gap-2">
+            📊 Invest Watchlist
+            <span class="text-[10px] font-bold px-2 py-1 rounded bg-purple-glow/15 text-purple-light" id="watchCount">0 / 3</span>
+          </h2>
+          <span class="text-[10px] text-keyboard-silver/45">Up to 3 stocks to buy · hover any candle to read its pattern &amp; buy/sell/hold signal</span>
+        </div>
+        <form id="watchForm" class="flex flex-wrap items-center gap-2 mb-2" onsubmit="event.preventDefault(); addWatchSymbols(document.getElementById('watchInput').value);">
+          <input id="watchInput" list="watchDatalist" placeholder="e.g. Reliance, TCS, HDFCBANK (comma-separated)" autocomplete="off"
+                 class="bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none flex-1 min-w-[220px]"/>
+          <datalist id="watchDatalist"></datalist>
+          <button type="submit" class="key-press px-4 py-2 rounded-lg bg-purple-glow/20 text-purple-light text-xs font-semibold leading-5 hover:bg-purple-glow/35 transition-colors">⚡ Analyse</button>
+          <button type="button" onclick="clearWatchlist()" class="key-press px-3 py-2 rounded-lg bg-keyboard-grey/40 text-keyboard-silver/70 text-xs hover:bg-keyboard-grey/60 transition-colors">Clear</button>
+        </form>
+        <div id="watchChips" class="flex flex-wrap gap-1.5 mb-1 items-center"></div>
+        <p id="watchNote" class="hidden text-[10px] text-yellow-400/80 mb-1"></p>
+        <div id="watchEmpty" class="text-center py-8">
+          <p class="text-3xl mb-2">🔍</p>
+          <p class="text-sm font-semibold text-keyboard-silver/80 mb-1">No stocks watched yet</p>
+          <p class="text-xs text-keyboard-silver/50 max-w-md mx-auto">Type the names of up to 3 stocks you plan to buy — Reliance, TCS, HDFCBANK… A live candlestick chart with pattern call-outs will appear for each. <b class="text-purple-light">Hover a candle</b> to see the pattern and what it means for buy / sell / hold.</p>
+        </div>
+        <div id="watchCards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+      </div>
       <!-- Feature Roadmap / To-Dos -->
       <div class="card rounded-2xl p-5 mb-6 glow-border" data-tilt="3">
         <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
@@ -2567,7 +2616,7 @@ function showSection(name) {
 
   // Load section data (only the active one; lazy, so the page stays light)
   try {
-    if (name === 'dashboard') { renderQuickPicks(); renderAlerts(); loadChartData(); }
+    if (name === 'dashboard') { renderQuickPicks(); renderAlerts(); loadChartData(); renderWatchlistPanel(); }
     if (name === 'oversold') renderOversold(state.market === 'US' ? STOCKS.US.oversold : STOCKS.India.oversold);
     if (name === 'trending') renderTrending(state.market === 'US' ? STOCKS.US.trending : STOCKS.India.trending);
     if (name === 'signals') loadStockSignals();
@@ -3548,22 +3597,56 @@ async function fetchYahooQuoteData(symbol, interval, range) {
       { time: t,         open: px, high: px, low: px, close: px, volume: 0 }
     ];
   }
-  if (/^\^/.test(symbol)) {
-    const q = await yahooQuoteJsonp([symbol]);
-    const qr = q && q.quoteResponse && q.quoteResponse.result && q.quoteResponse.result[0];
-    if (qr && qr.regularMarketPrice != null) {
-      state.browserDirect.add(symbol);
-      const cur = qr.regularMarketPrice;
-      let prev = qr.chartPreviousClose != null ? qr.chartPreviousClose : qr.regularMarketPreviousClose;
-      if (prev == null && qr.regularMarketChangePercent != null) prev = cur / (1 + qr.regularMarketChangePercent / 100);
-      const t = Math.floor(Date.now() / 1000);
-      return [
-        { time: t - 86400, open: prev, high: Math.max(cur, prev), low: Math.min(cur, prev), close: prev, volume: 0 },
-        { time: t,         open: cur,  high: cur, low: cur, close: cur, volume: 0 }
-      ];
-    }
+
+  // Server fetch failed (rate-gated / live sources down). Fall back to browser-direct
+  // JSONP — the v8 chart endpoint (no-crumb, callback-supported) works from a
+  // residential IP; v7 quote (current price only) as the last resort.
+  const direct = await yahooChartJsonp(symbol, interval, range).catch(() => null);
+  if (direct && direct.length >= 2) {
+    state.browserDirect.add(symbol);
+    return direct;
+  }
+  const q = await yahooQuoteJsonp([symbol]).catch(() => null);
+  const qr = q && q.quoteResponse && q.quoteResponse.result && q.quoteResponse.result[0];
+  if (qr && qr.regularMarketPrice != null) {
+    state.browserDirect.add(symbol);
+    const cur = qr.regularMarketPrice;
+    let prev = qr.chartPreviousClose != null ? qr.chartPreviousClose : qr.regularMarketPreviousClose;
+    if (prev == null && qr.regularMarketChangePercent != null) prev = cur / (1 + qr.regularMarketChangePercent / 100);
+    const t = Math.floor(Date.now() / 1000);
+    return [
+      { time: t - 86400, open: prev, high: Math.max(cur, prev), low: Math.min(cur, prev), close: prev, volume: 0 },
+      { time: t,         open: cur,  high: cur, low: cur, close: cur, volume: 0 }
+    ];
   }
   return null;
+}
+
+async function yahooChartJsonp(symbol, interval, range, timeoutMs) {
+  return new Promise((resolve) => {
+    const done = (data) => { cleanup(); resolve(data); };
+    const cb = 'yhooC' + Date.now() + Math.floor(Math.random() * 1e4);
+    const scr = document.createElement('script');
+    const timer = setTimeout(() => done(null), timeoutMs || 12000);
+    function cleanup() {
+      clearTimeout(timer);
+      try { delete window[cb]; } catch (e) {}
+      if (scr.parentNode) scr.parentNode.removeChild(scr);
+    }
+    window[cb] = (data) => done(data);
+    scr.onerror = () => done(null);
+    scr.src = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
+              '?interval=' + interval + '&range=' + range + '&callback=' + cb;
+    document.head.appendChild(scr);
+  }).then((d) => {
+    const r = d && d.chart && d.chart.result && d.chart.result[0];
+    if (!r || !r.timestamp || !r.indicators || !r.indicators.quote || !r.indicators.quote[0]) return null;
+    const q = r.indicators.quote[0];
+    const o = q.open || [], h = q.high || [], l = q.low || [], c = q.close || [], v = q.volume || [];
+    return r.timestamp.map((t, i) => ({
+      time: t, open: o[i] ?? 0, high: h[i] ?? 0, low: l[i] ?? 0, close: c[i] ?? 0, volume: v[i] ?? 0
+    }));
+  });
 }
 
 async function yahooQuoteJsonp(symbols, timeoutMs) {
@@ -3678,6 +3761,347 @@ function rsiFromCloses(closes, period = 14) {
     rsi = 100 - 100 / (1 + rs);
   }
   return rsi;
+}
+
+// ============================================================
+// INVEST WATCHLIST — up to 3 stocks, SVG candlestick charts.
+// Hover any candle → OHLC + detected patterns + buy/sell/hold
+// call-out. List persists in localStorage (expandable later).
+// ============================================================
+const WATCH_MAX = 3;
+const watchCache = {};
+
+const SYMBOL_ALIASES = {
+  'nifty': '^NSEI', 'nifty 50': '^NSEI', 'nifty50': '^NSEI', 'nifty index': '^NSEI',
+  'sensex': '^BSESN', 'bse sensex': '^BSESN',
+  'banknifty': '^NSEBANK', 'nifty bank': '^NSEBANK', 'bank nifty': '^NSEBANK',
+  'india vix': '^INDIAVIX', 'vix': '^INDIAVIX', 'indiavix': '^INDIAVIX',
+  'gold': 'GC=F', 'crude': 'CL=F', 'crude oil': 'CL=F',
+  's&p 500': '^GSPC', 'spy': 'SPY', 'nasdaq': 'QQQ'
+};
+const NSE_COMMON = {
+  'reliance': 'RELIANCE.NS', 'reliance industries': 'RELIANCE.NS',
+  'tcs': 'TCS.NS', 'tata consultancy': 'TCS.NS',
+  'hdfc': 'HDFCBANK.NS', 'hdfc bank': 'HDFCBANK.NS',
+  'infosys': 'INFY.NS',
+  'tata motors': 'TMPV.NS', 'tatamotors': 'TMPV.NS',
+  'maruti': 'MARUTI.NS', 'maruti suzuki': 'MARUTI.NS',
+  'titan': 'TITAN.NS',
+  'l&t': 'LT.NS', 'larsen': 'LT.NS', 'larsen & toubro': 'LT.NS',
+  'bharti': 'BHARTIARTL.NS', 'airtel': 'BHARTIARTL.NS',
+  'sun pharma': 'SUNPHARMA.NS', 'sunpharma': 'SUNPHARMA.NS',
+  'hul': 'HINDUNILVR.NS', 'hindustan unilever': 'HINDUNILVR.NS',
+  'tata steel': 'TATASTEEL.NS', 'bajaj finance': 'BAJFINANCE.NS',
+  'asian paints': 'ASIANPAINT.NS', 'hcl': 'HCLTECH.NS', 'hcl tech': 'HCLTECH.NS',
+  'tech mahindra': 'TECHM.NS', 'm&m': 'M&M.NS', 'mahindra': 'M&M.NS',
+  'wipro': 'WIPRO.NS', 'adani enterprises': 'ADANIENT.NS', 'itc': 'ITC.NS'
+};
+const WATCH_NAME_BY_SYM = {
+  '^NSEI': 'NIFTY 50', '^BSESN': 'SENSEX', '^NSEBANK': 'NIFTY Bank',
+  '^INDIAVIX': 'India VIX', '^GSPC': 'S&P 500', 'GC=F': 'Gold', 'CL=F': 'Crude Oil'
+};
+function buildWatchNameMap() {
+  Object.keys(NSE_COMMON).forEach(k => { WATCH_NAME_BY_SYM[NSE_COMMON[k]] = k.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); });
+  if (window.SIGNAL_UNIVERSE) SIGNAL_UNIVERSE.forEach(u => { WATCH_NAME_BY_SYM[u.s] = u.n; });
+}
+function watchName(sym) { return WATCH_NAME_BY_SYM[sym] || sym; }
+function watchCur(sym) {
+  return /\.NS$|\.BO$|^NSE|^\^NSE|^\^BSESN|^\^INDIAVIX/.test(sym) ? '₹' : '$';
+}
+
+function resolveWatchSymbol(raw) {
+  raw = String(raw || '').trim();
+  if (!raw) return null;
+  const low = raw.toLowerCase().replace(/\s+/g, ' ');
+  if (SYMBOL_ALIASES[low]) return SYMBOL_ALIASES[low];
+  if (window.SIGNAL_UNIVERSE) {
+    for (const u of SIGNAL_UNIVERSE) if (u.n.toLowerCase() === low) return u.s;
+    for (const u of SIGNAL_UNIVERSE) if (u.n.toLowerCase().includes(low)) return u.s;
+  }
+  if (NSE_COMMON[low]) return NSE_COMMON[low];
+  if (/^[\^A-Z][A-Z0-9.\-=\^]*$/.test(raw)) return raw;
+  if (/^[a-z0-9]{2,12}$/.test(low)) return raw.toUpperCase() + '.NS';
+  return null;
+}
+
+function watchList() { try { return JSON.parse(localStorage.getItem('stockpulse_watch') || '[]'); } catch (e) { return []; } }
+function saveWatchList(a) { try { localStorage.setItem('stockpulse_watch', JSON.stringify(a)); } catch (e) {} }
+
+function renderWatchChips() {
+  const host = document.getElementById('watchChips');
+  if (!host) return;
+  const list = watchList();
+  if (list.length) {
+    host.innerHTML = list.map(s =>
+      '<button onclick="removeWatch(' + "'" + s + "'" + ')" class="key-press text-[10px] px-2 py-1 rounded-lg bg-purple-glow/15 text-purple-light border border-purple-glow/30 hover:bg-purple-glow/25 transition-colors cursor-pointer" title="Click to remove">' +
+      escapeHtml(watchName(s)) + ' ✕</button>').join('') +
+      '<span class="text-[9px] text-keyboard-silver/40">' + (WATCH_MAX - list.length) + ' slot(s) left · more slots coming soon</span>';
+  } else {
+    const sug = ['reliance', 'tcs', 'hdfc', 'infosys', 'nifty'];
+    host.innerHTML = sug.map(k =>
+      '<button onclick="quickAddWatch(' + "'" + k + "'" + ')" class="key-press text-[10px] px-2 py-1 rounded-lg bg-keyboard-grey/40 text-keyboard-silver/70 hover:bg-purple-glow/20 transition-colors cursor-pointer">+ ' + k + '</button>').join('') +
+      '<span class="text-[9px] text-keyboard-silver/40">suggestions — tap to add a stock</span>';
+  }
+}
+
+function renderAllWatchCards() {
+  const cards = document.getElementById('watchCards');
+  const list = watchList();
+  if (!cards) return;
+  cards.innerHTML = list.map(sym => watchCache[sym] ? watchCardHTML(sym) : skeletonWatchHTML()).join('');
+}
+
+function renderWatchlistPanel() {
+  const empty = document.getElementById('watchEmpty');
+  const cards = document.getElementById('watchCards');
+  const cnt = document.getElementById('watchCount');
+  const list = watchList();
+  renderWatchChips();
+  if (cnt) cnt.textContent = list.length + ' / ' + WATCH_MAX;
+  if (empty) empty.classList.toggle('hidden', list.length > 0);
+  if (!cards) return;
+  renderAllWatchCards();
+  list.forEach(sym => { if (!watchCache[sym]) loadWatchChart(sym); });
+}
+
+function skeletonWatchHTML() {
+  return '<div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-3 shimmer" style="min-height:180px"></div>';
+}
+
+async function addWatchSymbols(raw) {
+  const parts = String(raw || '').split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+  if (!parts.length) return;
+  const unresolved = [], add = [];
+  parts.slice(0, WATCH_MAX * 2).forEach(p => { const s = resolveWatchSymbol(p); s ? add.push(s) : unresolved.push(p); });
+  let list = watchList();
+  let added = 0;
+  add.forEach(s => { if (!list.includes(s) && list.length < WATCH_MAX) { list.push(s); added++; } });
+  saveWatchList(list);
+  const note = document.getElementById('watchNote');
+  if (note) {
+    if (unresolved.length) { note.classList.remove('hidden'); note.textContent = 'Couldn\u2019t find: ' + unresolved.join(', ') + ' — try a symbol like RELIANCE.NS, TCS, AAPL or NIFTY.'; }
+    else if (added === 0) { note.classList.remove('hidden'); note.textContent = 'Slots full (max ' + WATCH_MAX + ') or already tracked — remove one to swap in another.'; }
+    else note.classList.add('hidden');
+  }
+  const inp = document.getElementById('watchInput');
+  if (inp) inp.value = '';
+  renderWatchlistPanel();
+}
+function quickAddWatch(k) { addWatchSymbols(k); }
+function removeWatch(sym) {
+  saveWatchList(watchList().filter(s => s !== sym));
+  delete watchCache[sym];
+  renderWatchlistPanel();
+}
+function clearWatchlist() {
+  saveWatchList([]);
+  Object.keys(watchCache).forEach(k => delete watchCache[k]);
+  renderWatchlistPanel();
+}
+
+function analysisOf(candles) {
+  const closes = candles.map(c => c.close);
+  const highs = candles.map(c => c.high);
+  const lows = candles.map(c => c.low);
+  const last = candles[candles.length - 1];
+  const prev = candles[candles.length - 2];
+  const price = last.close;
+  const chg1d = prev ? (price / prev.close - 1) * 100 : 0;
+  const chg2d = candles[candles.length - 3] ? (price / candles[candles.length - 3].close - 1) * 100 : chg1d;
+  const sma20 = closes.slice(-20).reduce((a, b) => a + b, 0) / Math.min(20, closes.length);
+  const rsi = rsiFromCloses(closes);
+  const atrWindow = Math.min(14, candles.length - 1);
+  let sumATR = 0;
+  for (let i = candles.length - atrWindow; i < candles.length; i++) {
+    const c = candles[i], p = candles[i - 1];
+    sumATR += Math.max(c.high - c.low, Math.abs(c.high - p.close), Math.abs(c.low - p.close));
+  }
+  const atr = sumATR / atrWindow;
+  const swingHigh = Math.max(...highs.slice(-10));
+  const swingLow = Math.min(...lows.slice(-10));
+  const sl = Math.min(swingLow - atr * 0.5, price * 0.97);
+  const target = Math.max(swingHigh + atr * 0.6, price * 1.02);
+  const slPct = ((sl / price) - 1) * 100;
+  const rr = (target - price) / Math.max(price - sl, 0.001);
+
+  let bias = 0;
+  const pats = CandlePatterns.detect(candles);
+  pats.forEach(p => {
+    if (p.index >= candles.length - 2) { if (p.type === 'bullish') bias++; else if (p.type === 'bearish') bias--; }
+  });
+
+  let label, cls, reason;
+  if (rsi <= 32 && bias >= 0) { label = 'BUY THE DIP'; cls = 'text-green-400 bg-green-500/10 border border-green-500/25'; reason = 'RSI ' + rsi.toFixed(0) + ' → oversold, and the latest candles confirm the dip is buying back up.'; }
+  else if (bias > 0 && (rsi == null || rsi < 72) && price > sma20) { label = 'BUY / HOLD'; cls = 'text-green-400 bg-green-500/10 border border-green-500/25'; reason = 'A bullish candle pattern sits near current price above the 20-day average. Dips toward the SL are buyable.'; }
+  else if (bias < 0 || (rsi != null && rsi > 72)) { label = 'SELL / TRIM'; cls = 'text-red-400 bg-red-500/10 border border-red-500/25'; reason = (rsi != null && rsi > 72 ? 'RSI ' + rsi.toFixed(0) + ' is overbought' : 'A bearish candle pattern is forming at the top') + ' — book profits or wait for the pullback.'; }
+  else { label = 'HOLD'; cls = 'text-yellow-400 bg-yellow-500/10 border border-yellow-500/25'; reason = 'Still flat — neither side has the edge. Wait for a clear pattern or a stronger dip.'; }
+
+  return {
+    price, chg1d, chg2d, sma20, rsi, sl, target, rr, slPct,
+    verdict: { label, cls, reason }
+  };
+}
+
+async function loadWatchChart(sym) {
+  try {
+    const candles = await fetchYahooQuoteData(sym, '1d', '6mo');
+    const ok = candles && candles.length >= 20;
+    if (!ok) { watchCache[sym] = null; renderAllWatchCards(); return; }
+    const patMap = {};
+    CandlePatterns.detect(candles).forEach(p => { (patMap[p.index] = patMap[p.index] || []).push(p); });
+    watchCache[sym] = { candles, patMap, analysis: analysisOf(candles) };
+    renderAllWatchCards();
+  } catch (e) { watchCache[sym] = null; renderAllWatchCards(); }
+}
+
+const PATTERN_BIAS = {
+  'Doji':              ['HOLD', 'Buyers and sellers are equal — wait for the next candle to confirm direction.'],
+  'Hammer':            ['BUY-side', 'Dip buyers won the day — look to buy weakness near support, SL below this low.'],
+  'Shooting Star':     ['SELL-side', 'Sellers rejected the rally — trim longs and wait for follow-through down.'],
+  'Bullish Marubozu':  ['BUY', 'Full-strength green body — momentum buyers are in control.'],
+  'Bearish Marubozu':  ['SELL', 'Full-strength red body — sellers are in control.'],
+  'Spinning Top':      ['HOLD', 'A tug-of-war candle — no edge yet, stay patient.'],
+  'Bullish Engulfing': ['BUY', 'Green swallows the prior red — a strong reversal-up signal.'],
+  'Bearish Engulfing': ['SELL', 'Red swallows the prior green — a strong reversal-down signal.'],
+  'Piercing Line':     ['BUY-side', 'Buyers recovered half of the prior drop — a reversal is building.'],
+  'Dark Cloud Cover':  ['SELL-side', 'Sellers are cutting the rally short — protect profits.'],
+  'Tweezer Top':       ['SELL-side', 'Price was rejected twice at the same high — resistance is holding.'],
+  'Tweezer Bottom':    ['BUY-side', 'Price was defended twice at the same low — support is holding.'],
+  'Morning Star':      ['BUY', 'A three-candle bottom reversal — shift to accumulation.'],
+  'Evening Star':      ['SELL', 'A three-candle top reversal — shift to distribution.'],
+  'Three White Soldiers': ['BUY', 'Three climbing green candles — strong uptrend, dips are buyable.'],
+  'Three Black Crows': ['SELL', 'Three falling red candles — strong downtrend, avoid catching the knife.']
+};
+function patternBias(name) {
+  return PATTERN_BIAS[name] || ['HOLD', ''];
+}
+
+function watchCardHTML(sym) {
+  const d = watchCache[sym];
+  if (!d) {
+    return '<div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-3">' +
+      '<p class="text-xs font-bold text-keyboard-light mb-2">' + escapeHtml(watchName(sym)) + '</p>' +
+      '<p class="text-[10px] text-yellow-400/80">No price feed for <b>' + escapeHtml(sym) + '</b> right now (free NSE feed gated). Click the tag above to remove it.</p></div>';
+  }
+  const candles = d.candles, an = d.analysis;
+  const N = 45, W2 = 360, H2 = 150;
+  const slice = candles.slice(-N);
+  const minP = Math.min.apply(null, slice.map(c => c.low));
+  const maxP = Math.max.apply(null, slice.map(c => c.high));
+  const span = (maxP - minP) || 1;
+  const pad = 0.05;
+  const pos = p => H2 - ((p - minP) / span) * (1 - 2 * pad) * H2 - pad * H2;
+  const cw = W2 / N;
+
+  let r = '';
+  for (let g = 1; g < 5; g++) { r += '<line x1="0" y1="' + (H2 * g / 5) + '" x2="' + W2 + '" y2="' + (H2 * g / 5) + '" stroke="rgba(192,192,192,0.06)"/>'; }
+  slice.forEach((c, i) => {
+    const x = i * cw + cw / 2;
+    const up = c.close >= c.open;
+    const col = up ? '#22c55e' : '#ef4444';
+    r += '<line x1="' + x + '" y1="' + pos(c.high) + '" x2="' + x + '" y2="' + pos(c.low) + '" stroke="' + col + '" stroke-width="1"/>';
+    const bTop = Math.min(pos(c.open), pos(c.close));
+    const bH = Math.max(Math.abs(pos(c.open) - pos(c.close)), 1);
+    r += '<rect class="w-candle" data-sym="' + sym + '" data-i="' + (candles.length - N + i) + '" x="' + (x - cw * 0.22) + '" y="' + bTop + '" width="' + (cw * 0.44) + '" height="' + bH + '" rx="1" fill="' + col + '"/>';
+  });
+
+  const last = candles[candles.length - 1];
+  const chgPct = an.chg1d;
+  const vcol = chgPct >= 0 ? 'text-green-400' : 'text-red-400';
+  const vAr = chgPct >= 0 ? '▲' : '▼';
+  const v = an.verdict;
+
+  const recentKeys = [];
+  for (let i = Math.max(0, candles.length - 6); i < candles.length; i++) {
+    (d.patMap[i] || []).forEach(p => { if (recentKeys.indexOf(p.name) === -1) recentKeys.push(p.name); });
+  }
+  const patChips = recentKeys.map(nm => {
+    const b = patternBias(nm);
+    const cls = (b[0] === 'BUY' || b[0] === 'BUY-side') ? 'text-green-400 border-green-500/30 bg-green-500/10'
+            : (b[0] === 'SELL' || b[0] === 'SELL-side') ? 'text-red-400 border-red-500/30 bg-red-500/10'
+            : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10';
+    return '<span class="key-press text-[9px] px-1.5 py-0.5 rounded border cursor-help" title="' + escapeHtml(b[1]) + '">' + escapeHtml(nm) + '</span>';
+  }).join('');
+
+  return '<div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-3 watch-card">' +
+    '<div class="flex items-center justify-between flex-wrap gap-1 mb-1">' +
+      '<div>' +
+        '<p class="text-xs font-bold text-keyboard-light">' + escapeHtml(watchName(sym)) + ' <span class="text-[9px] font-normal text-keyboard-silver/50">' + escapeHtml(sym) + '</span>' +
+          '<button onclick="refreshWatch(\'' + sym + '\')" class="key-press ml-1 text-[9px] text-purple-light/70 hover:text-purple-light" title="Refresh chart">⟳</button></p>' +
+        '<p class="text-[10px]"><span class="' + vcol + ' tabular-nums font-bold">' + vAr + ' ' + watchCur(sym) + formatNumber(last.close) + '</span> <span class="' + vcol + ' tabular-nums">(' + formatPercent(chgPct) + ')</span></p>' +
+      '</div>' +
+      '<span class="text-[9px] px-2 py-0.5 rounded font-bold border ' + v.cls + '">' + v.label + '</span>' +
+    '</div>' +
+    '<div class="flex flex-wrap gap-1 mb-1.5">' + (patChips || '<span class="text-[9px] text-keyboard-silver/40">no classic pattern in the last 6 sessions</span>') + '</div>' +
+    '<svg viewBox="0 0 ' + W2 + ' ' + H2 + '" class="w-full h-auto" style="touch-action:manipulation">' + r + '</svg>' +
+    '<div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-[9px] text-keyboard-silver/60">' +
+      '<span>SL <b class="text-red-400 tabular-nums">' + watchCur(sym) + formatNumber(an.sl) + '</b> (' + an.slPct.toFixed(1) + '%)</span>' +
+      '<span>Target <b class="text-green-400 tabular-nums">' + watchCur(sym) + formatNumber(an.target) + '</b></span>' +
+      '<span>R:R <b class="text-keyboard-light tabular-nums">1:' + an.rr.toFixed(1) + '</b></span>' +
+      (an.rsi != null ? '<span>RSI <b class="text-keyboard-light tabular-nums">' + an.rsi.toFixed(0) + '</b></span>' : '') +
+    '</div>' +
+    '<p class="mt-1 text-[9px] text-keyboard-silver/50 leading-relaxed">' + v.reason + '</p>' +
+    '<div class="watch-tip" data-for="' + sym + '"></div>' +
+  '</div>';
+}
+
+async function refreshWatch(sym) {
+  delete watchCache[sym];
+  renderAllWatchCards();
+  await loadWatchChart(sym);
+}
+
+function showWatchTip(cx, cy, sym, idx, d) {
+  const tip = document.querySelector('.watch-tip[data-for="' + sym + '"]');
+  if (!tip) return;
+  const c = d.candles[idx];
+  if (!c) return;
+  const pats = d.patMap[idx] || [];
+  const date = new Date(c.time * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const up = c.close >= c.open;
+  const bar = up ? '▲' : '▼';
+  const col = up ? '#4ade80' : '#f87171';
+  let h = '<div class="wt-head">' + date + ' <span style="color:' + col + '">' + bar + '</span></div>' +
+    '<div class="wt-ohlc">' +
+      '<span>O <b style="color:' + col + '">' + formatNumber(c.open) + '</b></span>' +
+      '<span>H <b>' + formatNumber(c.high) + '</b></span>' +
+      '<span>L <b>' + formatNumber(c.low) + '</b></span>' +
+      '<span>C <b style="color:' + col + '">' + formatNumber(c.close) + '</b></span>' +
+    '</div>';
+  if (pats.length) {
+    h += '<div class="wt-pats">';
+    pats.forEach(p => {
+      const b = patternBias(p.name);
+      const bCls = (b[0] === 'BUY' || b[0] === 'BUY-side') ? 'wt-buy' : (b[0] === 'SELL' || b[0] === 'SELL-side') ? 'wt-sell' : 'wt-hold';
+      h += '<div class="wt-pat"><b>' + escapeHtml(p.name) + '</b> <span class="' + bCls + '">→ ' + b[0].toUpperCase() + '</span><br>' + escapeHtml(p.description) + '<br><span style="color:#8b8f98">' + escapeHtml(b[1]) + '</span></div>';
+    });
+    h += '</div>';
+  } else {
+    h += '<div class="wt-none">No classic pattern on this candle — plain ' + (up ? 'bullish' : 'bearish') + ' bar.</div>';
+  }
+  tip.innerHTML = h;
+  tip.classList.add('show');
+  const tw = 236, th = 200;
+  let L = cx + 14, T = cy - th / 2;
+  if (L + tw > window.innerWidth - 8) L = cx - tw - 14;
+  if (T < 8) T = 8; else if (T + th > window.innerHeight - 8) T = window.innerHeight - th - 8;
+  tip.style.left = L + 'px';
+  tip.style.top = T + 'px';
+}
+
+function wireWatchHover() {
+  document.addEventListener('mousemove', function (e) {
+    const t = e.target && e.target.closest ? e.target.closest('rect.w-candle') : null;
+    if (t) {
+      const sym = t.getAttribute('data-sym');
+      const idx = +t.getAttribute('data-i');
+      const d = watchCache[sym];
+      if (d) showWatchTip(e.clientX, e.clientY, sym, idx, d);
+    } else {
+      const tip = document.querySelector('.watch-tip.show');
+      if (tip) tip.classList.remove('show');
+    }
+  });
 }
 
 async function loadStockSignals(force) {
@@ -4184,11 +4608,16 @@ async function init() {
   initChart();
   initMiniChart();
 
+  // Watchlist name map (aliases → pretty display names)
+  buildWatchNameMap();
+  wireWatchHover();
+
   // Render static data + alerts + indices explainer + roadmap
   renderQuickPicks();
   renderAlerts();
   renderIndicesEdu();
   renderRoadmap();
+  renderWatchlistPanel();
 
   // Load indices, market condition, macro + news ticker (TerminalFeed)
   await loadNewsTicker();
