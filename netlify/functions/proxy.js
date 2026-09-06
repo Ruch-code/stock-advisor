@@ -323,9 +323,9 @@ async function tradesEconomicsQuotes() {
     let m;
     while ((m = labelRe.exec(html))) {
       const name = m[1].trim();
-      const look = html.slice(m.index, m.index + 300);
-      const priceM = look.match(/id="p">([0-9.,]+)<\/td>/);
-      const pctM = look.match(/id="pch"[^>]*>([\-0-9.]+)%/);
+      const look = html.slice(m.index, m.index + 500);
+      const priceM = look.match(/id="p">\s*([0-9.,]+)\s*<\/td>/);
+      const pctM = look.match(/id="pch"[^>]*>\s*([\-0-9.]+)%/);
       if (!priceM) continue;
       const price = parseFloat(priceM[1].replace(/,/g, ''));
       if (isNaN(price)) continue;
