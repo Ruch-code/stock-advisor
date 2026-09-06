@@ -148,24 +148,55 @@ async function twelveChart(symbol, interval, range, exchange = null) {
 let ySession = { cookie: null, crumb: null, at: 0 };
 let diag = [];
 
+// Mint a Yahoo session: collect cookies from the finance homepage + fc.yahoo.com,
+// then exchange them for a crumb. The v7 quote endpoint REQUIRES cookie + crumb.
+async function yahooCookies() {
+  const jar = new Map();
+  const push = (header) => {
+    if (!header) return;
+    for (const part of header.split(',')) {
+      const kv = part.trim().match(/^([A-Za-z_][A-Za-z0-9_]*)=([^;]*)/);
+      if (kv && !/^expires$/i.test(kv[1]) && kv[2].length <= 256 && !jar.has(kv[1])) {
+        jar.set(kv[1], kv[2]);
+      }
+    }
+  };
+  for (const u of ['https://finance.yahoo.com/', 'https://fc.yahoo.com/']) {
+    try {
+      const r = await fetch(u, {
+        headers: { 'User-Agent': UA, 'Accept': '*/*', 'Accept-Language': 'en-US,en;q=0.9' }
+      });
+      push(r.headers.get('set-cookie') || '');
+      diag.push(`cookies ${u} -> ${r.status}`);
+    } catch (e) { diag.push(`cookies ${u} error: ${e.message}`); }
+  }
+  if (!jar.size) return null;
+  return [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
+}
+
 async function yahooCrumb(force = false) {
-  if (!force && ySession.crumb && Date.now() - ySession.at < 10 * 60 * 1000) return ySession;
+  if (!force && ySession.crumb && Date.now() - ySession.at < 10 * 60 * 1000) {
+    return ySession;
+  }
 
-  const r1 = await fetch('https://fc.yahoo.com', {
-    headers: { 'User-Agent': UA, 'Accept': '*/*' }
-  });
-  const setCookie = r1.headers.get('set-cookie') || '';
-  const cookie = setCookie.split(';')[0].split(',')[0].trim();
-  diag.push(`fc.yahoo.com -> ${r1.status}`);
+  let cookie = ySession.cookie;
+  if (!cookie) cookie = await yahooCookies();
 
-  let crumb = '', last = '';
+  let crumb = '';
   for (const host of YAHOO_HOSTS) {
-    const r2 = await fetch(`${host}/v1/test/getcrumb`, {
-      headers: { 'User-Agent': UA, 'Cookie': cookie, 'Accept': 'text/plain' }
-    });
-    last = (await r2.text()).trim();
-    diag.push(`getcrumb ${host} -> ${r2.status}`);
-    if (r2.status === 200 && last && last.length <= 64) { crumb = last; break; }
+    try {
+      const r2 = await fetch(`${host}/v1/test/getcrumb`, {
+        headers: {
+          'User-Agent': UA,
+          'Cookie': cookie,
+          'Accept': 'text/plain',
+          'Referer': 'https://finance.yahoo.com/'
+        }
+      });
+      const last = (await r2.text()).trim();
+      diag.push(`getcrumb ${host} -> ${r2.status}`);
+      if (r2.status === 200 && last && !/^Error/i.test(last)) { crumb = last; break; }
+    } catch (e) { diag.push(`getcrumb ${host} error`); }
   }
   if (!crumb) throw new Error('crumb fetch failed');
 
@@ -212,6 +243,67 @@ async function yahooChart(symbol, interval, range) {
   return lastRes;
 }
 
+// Persistent last-known-good store: when every live provider is throttled, the
+// proxy still returns the previous good payload flagged stale (never a dead tile).
+const staleStore = new Map();
+function staleSet(key, val) { staleStore.set(key, { v: val, t: Date.now() }); }
+function staleGet(key) { const e = staleStore.get(key); return e ? { v: e.v, t: e.t } : null; }
+
+// v7 batch quote — exact LTP, previous close + % change in ONE call. Needs cookie+crumb.
+async function yahooQuoteBatch(symbols) {
+  const s = await yahooCrumb();
+  const qs = symbols.map(encodeURIComponent).join(',');
+  for (const host of YAHOO_HOSTS) {
+    try {
+      const url = `${host}/v7/finance/quote?symbols=${qs}&crumb=${encodeURIComponent(s.crumb)}`;
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': UA,
+          'Accept': 'application/json, */*',
+          'Referer': 'https://finance.yahoo.com/',
+          'Cookie': s.cookie
+        }
+      });
+      diag.push(`quote ${host} -> ${res.status}`);
+      if (res.ok) {
+        const j = await res.json().catch(() => null);
+        if (j && j.quoteResponse && Array.isArray(j.quoteResponse.result)) return j.quoteResponse.result;
+      }
+    } catch (e) { diag.push(`quote ${host} error: ${e.message}`); }
+    await sleep(700);
+  }
+  return null;
+}
+
+// Build quote rows from the no-crumb v8 chart endpoint (last close vs previous close).
+async function yahooQuoteFromCharts(symbols) {
+  const rows = [];
+  for (const sym of symbols) {
+    try {
+      const res = await yahooChart(sym, '1d', '5d');
+      if (res && res.ok) {
+        const data = await res.json();
+        const r = data && data.chart && data.chart.result && data.chart.result[0];
+        const meta = r && r.meta;
+        if (meta && meta.regularMarketPrice != null) {
+          const cur = meta.regularMarketPrice;
+          const prev = meta.regularMarketPreviousClose;
+          rows.push({
+            symbol: sym,
+            regularMarketPrice: cur,
+            regularMarketChangePercent: prev ? ((cur / prev) - 1) * 100 : null,
+            regularMarketPreviousClose: prev,
+            regularMarketTime: meta.regularMarketTime,
+            currency: meta.currency || 'INR'
+          });
+        }
+      }
+    } catch (e) { /* skip symbol */ }
+    if (rows.length >= symbols.length) break;
+  }
+  return rows.length ? rows : null;
+}
+
 export default async (event, context) => {
   const isRequest = event && typeof event === 'object' && typeof event.url === 'string' && Object.keys(event).length === 0;
   const method = isRequest ? event.method : (event && event.httpMethod) || 'GET';
@@ -230,6 +322,35 @@ export default async (event, context) => {
   if (!/^[a-zA-Z0-9]+$/.test(range)) range = '5d';
 
   if (params.mode === 'news') return await handleNews(params.topic || 'markets');
+
+  // Batch live quote endpoint (used by the market ticker): ONE call for all indices.
+  if (params.mode === 'quote') {
+    const symbols = String(params.symbols || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 8);
+    if (!symbols.length) return corsResponse(JSON.stringify({ error: 'symbols required' }), 400);
+    const qKey = 'quote|' + [...symbols].sort().join(',');
+    const qCached = cached(qKey);
+    if (qCached) return corsResponse(JSON.stringify(qCached), 200, { 'Cache-Control': 'public, max-age=15' });
+    const wantDebug = params.debug === '1';
+    diag = [];
+    let result = null, source = 'yahoo', stale = false, asOf = Date.now();
+    try { result = await yahooQuoteBatch(symbols); } catch (e) { diag.push(`quote batch error: ${e.message}`); }
+    if (!result || !result.length) {
+      const rows = await yahooQuoteFromCharts(symbols);
+      if (rows) { result = rows; source = 'chart'; }
+    }
+    if (!result || !result.length) {
+      const st = staleGet(qKey);
+      if (st) { result = st.v; stale = true; asOf = st.t; }
+    }
+    if (result && result.length) {
+      const body = { quoteResponse: { result }, _src: source, _stale: stale, _asOf: asOf };
+      if (!stale) { cacheSet(qKey, body); staleSet(qKey, result); }
+      return corsResponse(JSON.stringify(body), 200, { 'Cache-Control': 'public, max-age=15' });
+    }
+    const body = { error: 'live sources unavailable', detail: 'all quote sources throttled' };
+    if (wantDebug) body.diag = diag.slice(-12);
+    return corsResponse(JSON.stringify(body), 200, { 'Cache-Control': 'public, max-age=30' });
+  }
 
   if (!symbol) return corsResponse(JSON.stringify({ error: 'symbol is required' }), 400);
   if (!/^[A-Za-z0-9.^\-=]+$/.test(symbol)) return corsResponse(JSON.stringify({ error: 'invalid symbol' }), 400);
@@ -260,6 +381,7 @@ export default async (event, context) => {
 
   if (out) {
     cacheSet(cacheKey, out);
+    staleSet(cacheKey, out); // remember the last good candles so the tile never goes dead
     return corsResponse(JSON.stringify(out), 200, { 'Cache-Control': 'public, max-age=15' });
   }
 
@@ -269,15 +391,25 @@ export default async (event, context) => {
     if (res && res.ok) {
       const data = await res.json();
       cacheSet(cacheKey, data);
+      staleSet(cacheKey, data);
       return corsResponse(JSON.stringify(data), 200, { 'Cache-Control': 'public, max-age=15' });
     }
     const detail = res ? await res.text().catch(() => '') : '';
     const body = { error: 'live sources unavailable', detail: detail.slice(0, 200) };
     if (wantDebug) body.diag = diag.slice(-12);
+    // Best effort: serve the last successful candles for this symbol (flagged stale)
+    const st = staleGet(cacheKey);
+    if (st && st.v && st.v.chart && st.v.chart.result) {
+      return corsResponse(JSON.stringify({ ...st.v, _stale: true, _asOf: st.t }), 200, { 'Cache-Control': 'public, max-age=30' });
+    }
     return corsResponse(JSON.stringify(body), 200, { 'Cache-Control': 'public, max-age=30' });
   } catch (e) {
     const body = { error: 'live sources unavailable', detail: e.message };
     if (wantDebug) body.diag = diag.slice(-12);
+    const st = staleGet(cacheKey);
+    if (st && st.v && st.v.chart && st.v.chart.result) {
+      return corsResponse(JSON.stringify({ ...st.v, _stale: true, _asOf: st.t }), 200, { 'Cache-Control': 'public, max-age=30' });
+    }
     return corsResponse(JSON.stringify(body), 200, { 'Cache-Control': 'public, max-age=30' });
   }
 };

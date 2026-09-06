@@ -3686,63 +3686,90 @@ function mktTileHTML(t) {
   // VIX colouring is inverted: rising volatility = anxiety (amber), falling = calm (green)
   const cls = isVix && has ? (up ? 'text-yellow-400' : 'text-green-400') : (has ? (up ? 'text-green-400' : 'text-red-400') : 'text-keyboard-silver/40');
   const arrow = has ? (isVix && up ? '⚠' : (up ? '▲' : '▼')) : '·';
-  const delayed = t.delayed ? '<span class="text-[8px] text-yellow-500/70 ml-1">DELAYED</span>' : '';
-  return '<span class="ticker-item">' +
+  let tag = '';
+  if (t.live) tag = '<span class="text-[8px] text-green-400 ml-1">LIVE</span>';
+  else if (t.delayed && !t.held) tag = '<span class="text-[8px] text-yellow-500/70 ml-1" title="Last close from chart data">DELAYED</span>';
+  else if (t.held) tag = '<span class="text-[8px] text-keyboard-silver/50 ml-1" title="Last known value, held from earlier today">HELD ' + (t.asOf ? new Date(t.asOf).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '') + '</span>';
+  return '<span class="ticker-item" ' + (tag ? 'title="' + (t.live ? 'Live feed (Yahoo)' : t.delayed ? 'Delayed — last close' : 'Held value — providers throttled, retrying') + '"' : '') + '>' +
     '<b class="font-semibold text-keyboard-silver/80">' + t.k + '</b> ' +
     '<span class="tabular-nums font-bold ' + cls + '">' + arrow + ' ' + (has ? formatNumber(t.v) : '--') + '</span> ' +
     (has ? '<span class="tabular-nums ' + cls + '">(' + formatPercent(t.chg) + ')</span>' : '') +
-    delayed +
+    tag +
     '</span>';
+}
+
+function readHeldIndices() { try { return JSON.parse(localStorage.getItem('stockpulse_indices') || 'null'); } catch (e) { return null; } }
+function saveHeldIndices(result, at) { try { localStorage.setItem('stockpulse_indices', JSON.stringify({ result, at })); } catch (e) {} }
+
+function mktRowsToHTML(bySym, opts) {
+  return MKT_TICKER_SYMBOLS.map(m => {
+    const x = bySym[m.sym];
+    const has = x && x.regularMarketPrice != null;
+    return mktTileHTML({
+      k: m.k,
+      v: has ? x.regularMarketPrice : null,
+      chg: has && x.regularMarketChangePercent != null ? x.regularMarketChangePercent : null,
+      live: !!opts.live,
+      delayed: !!opts.delayed,
+      held: !!opts.held,
+      asOf: opts.asOf
+    });
+  }).join('');
 }
 
 async function loadMarketTicker() {
   const track = document.getElementById('mktTrack');
   if (!track) return;
-  const placeholder = MKT_TICKER_SYMBOLS.map(m => mktTileHTML({ k: m.k, v: null, chg: null }));
-  track.innerHTML = placeholder.join('') + '<span class="ticker-item text-keyboard-silver/35">NSE official · refreshing…</span>';
 
-  // Primary: one browser-direct JSONP call for all four indices (residential IP)
-  const q = await yahooQuoteJsonp(MKT_TICKER_SYMBOLS.map(m => m.sym), 9000).catch(() => null);
-  const res = q && q.quoteResponse && q.quoteResponse.result;
-  if (res && res.length) {
-    const bySym = {};
-    res.forEach(x => { if (x) bySym[x.symbol] = x; });
-    const html = MKT_TICKER_SYMBOLS.map(m => {
-      const x = bySym[m.sym];
-      const has = x && x.regularMarketPrice != null;
-      return mktTileHTML({
-        k: m.k,
-        v: has ? x.regularMarketPrice : null,
-        chg: has && x.regularMarketChangePercent != null ? x.regularMarketChangePercent : null
-      });
-    });
-    track.innerHTML = html.join('') + '<span class="ticker-item text-keyboard-silver/35">NSE via Yahoo · live</span>';
-    return;
+  function renderHeldOrPlaceholder() {
+    const held = readHeldIndices();
+    if (held && held.result && held.result.length) {
+      const bySym = {};
+      held.result.forEach(x => { if (x) bySym[x.symbol] = x; });
+      track.innerHTML = mktRowsToHTML(bySym, { held: true, asOf: held.at }) +
+        '<span class="ticker-item text-keyboard-silver/35">held · retrying live</span>';
+      return;
+    }
+    track.innerHTML = MKT_TICKER_SYMBOLS.map(m => mktTileHTML({ k: m.k, v: null, chg: null })).join('') +
+      '<span class="ticker-item text-yellow-500/70">connecting to NSE/BSE live feed…</span>';
   }
 
-  // Fallback: per-symbol proxy chart (may be delayed / rate-gated)
-  const out = [];
-  await Promise.all(MKT_TICKER_SYMBOLS.map(async (m) => {
-    try {
-      const candles = await fetchYahooQuoteData(m.sym, '1d', '5d');
-      if (candles && candles.length >= 2) {
-        const last = candles[candles.length - 1].close;
-        const prev = candles[candles.length - 2].close;
-        if (last != null && last > 0 && prev != null && prev > 0) {
-          out.push({ k: m.k, v: last, chg: ((last / prev) - 1) * 100, delayed: true });
-        }
-      }
-    } catch (e) { /* keep tile offline */ }
-  }));
-  if (out.length) {
-    const html = MKT_TICKER_SYMBOLS.map(m => {
-      const hit = out.find(o => o.k === m.k);
-      return mktTileHTML(hit || { k: m.k, v: null, chg: null, delayed: hit && hit.delayed });
-    });
-    track.innerHTML = html.join('') + '<span class="ticker-item text-keyboard-silver/35">NSE via Yahoo · delayed</span>';
-    return;
-  }
-  track.innerHTML = placeholder.join('') + '<span class="ticker-item text-yellow-500/70">free NSE feed unavailable — retrying</span>';
+  // 1) Primary: ONE server-side batch quote call (live LTP, single request)
+  try {
+    const url = API.YAHOO_QUOTE + '?mode=quote&symbols=' + MKT_TICKER_SYMBOLS.map(m => encodeURIComponent(m.sym)).join(',');
+    const res = await fetchWithTimeout(url, {}, 15000);
+    const d = await res.json();
+    const rows = d && d.quoteResponse && d.quoteResponse.result;
+    if (rows && rows.length) {
+      const bySym = {};
+      rows.forEach(x => { if (x) bySym[x.symbol] = x; });
+      const live = !d._stale && d._src === 'yahoo';
+      const delayed = d._src === 'chart';
+      const held = !!d._stale;
+      track.innerHTML = mktRowsToHTML(bySym, { live, delayed, held, asOf: d._asOf }) +
+        '<span class="ticker-item text-keyboard-silver/35">' +
+        (held ? 'held · retrying live' : delayed ? 'NSE via Yahoo · chart-derived' : 'NSE/BSE · live') + '</span>';
+      if (!held) saveHeldIndices(rows, d._asOf || Date.now());
+      return;
+    }
+  } catch (e) { /* fall through */ }
+
+  // 2) Browser-direct JSONP (v7 quote from this device's residential IP)
+  try {
+    const q = await yahooQuoteJsonp(MKT_TICKER_SYMBOLS.map(m => m.sym), 8000);
+    const res = q && q.quoteResponse && q.quoteResponse.result;
+    if (res && res.length) {
+      const bySym = {};
+      res.forEach(x => { if (x) bySym[x.symbol] = x; });
+      track.innerHTML = mktRowsToHTML(bySym, { live: true }) +
+        '<span class="ticker-item text-keyboard-silver/35">NSE/BSE via Yahoo · direct</span>';
+      saveHeldIndices(res, Date.now());
+      return;
+    }
+  } catch (e) { /* fall through */ }
+
+  // 3) Last-known values held locally (never a blank tile)
+  renderHeldOrPlaceholder();
 }
 
 function rsiFromCloses(closes, period = 14) {
