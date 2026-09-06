@@ -543,9 +543,72 @@
       0%, 100% { transform: perspective(700px) rotateX(5deg) translateY(0); }
       50%      { transform: perspective(700px) rotateX(2deg) translateY(-9px); }
     }
+    /* ---------- Market 3D depth field (cursor-tilted parallax) ---------- */
+    #mktDepth {
+      position: fixed; inset: -18%; z-index: -1;
+      pointer-events: none; overflow: hidden;
+      transform-style: preserve-3d; will-change: transform;
+    }
+    .mkt-layer { position: absolute; inset: 0; transform-style: preserve-3d; }
+    .mkt-token { position: absolute; will-change: transform; }
+    .mkt-candle { color: #22c55e; }
+    .mkt-candle::before {
+      content: ''; position: absolute; left: 1px; right: 1px; top: 3px; bottom: 3px;
+      border-radius: 1px; background: currentColor; box-shadow: 0 0 6px currentColor;
+    }
+    .mkt-candle::after {
+      content: ''; position: absolute; left: 3px; top: 0; bottom: 0; width: 1px; background: currentColor;
+    }
+    .mkt-candle { width: 7px; height: 15px; opacity: 0.07; }
+    .mkt-candle.down { color: #ef4444; }
+    .mkt-coin {
+      width: 11px; height: 11px; border-radius: 50%; opacity: 0.08;
+      background: radial-gradient(circle at 35% 30%, #fde68a 0%, #b45309 75%);
+      box-shadow: 0 0 9px rgba(245, 158, 11, 0.45), inset 0 0 4px rgba(120, 53, 15, 0.85);
+    }
+    .mkt-glyph { font-size: 10px; font-weight: 800; color: #a78bfa; opacity: 0.08; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .mkt-tick {
+      font-size: 8px; font-weight: 700; color: #67e8f9; opacity: 0.07;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: rgba(15, 118, 110, 0.22); border: 1px solid rgba(45, 212, 191, 0.3);
+      padding: 1px 3px; border-radius: 3px; white-space: nowrap;
+    }
+    /* ---------- Market tick pops (candles & price chips, rise from cursor) ---------- */
+    #mktPops { position: fixed; inset: 0; pointer-events: none; z-index: 99998; overflow: hidden; }
+    .tick-pop {
+      position: absolute; width: 9px; height: 18px;
+      animation: tickRise 1.15s cubic-bezier(0.25, 0.6, 0.4, 1) forwards;
+      will-change: transform, opacity;
+    }
+    .tick-pop::before {
+      content: ''; position: absolute; left: 1px; right: 1px; top: 3px; bottom: 3px;
+      border-radius: 1px; background: currentColor; box-shadow: 0 0 6px currentColor;
+    }
+    .tick-pop::after {
+      content: ''; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: currentColor;
+    }
+    .tick-pop.up { color: #4ade80; }
+    .tick-pop.down { color: #f87171; }
+    .tick-pop.big { width: 13px; height: 26px; }
+    .tick-pop.big::after { left: 6px; }
+    .tick-pop.price {
+      width: auto; height: auto; padding: 3px 7px; border-radius: 6px;
+      background: rgba(18, 18, 22, 0.88);
+      border: 1px solid rgba(124, 58, 237, 0.5);
+      font-size: 10px; font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #e9d5ff; white-space: nowrap;
+    }
+    .tick-pop.price::before, .tick-pop.price::after { display: none; }
+    .tick-pop.price.neg { color: #fca5a5; border-color: rgba(239, 68, 68, 0.45); }
+    @keyframes tickRise {
+      0%   { transform: rotateZ(-6deg) translateY(0) scale(0.6); opacity: 0; }
+      12%  { opacity: 1; }
+      100% { transform: translate(var(--drift, 0px), -110px) rotateZ(var(--spin, -8deg)) scale(1); opacity: 0; }
+    }
     @media (prefers-reduced-motion: reduce) {
       .section, [data-tilt], .float-3d { animation: none !important; transition: none !important; transform: none !important; }
       [data-tilt] { will-change: auto; }
+      .tick-pop, #mktDepth, .mkt-token { animation: none !important; display: none !important; }
     }
   </style>
 </head>
@@ -4315,6 +4378,102 @@ document.addEventListener('DOMContentLoaded', function() {
     if (tile && !tile.classList.contains('show-tip')) tile.classList.add('show-tip');
   });
 });
+
+  // ============================================================
+// MARKET 3D FX — cursor-tilted depth field + candlestick tick pops
+// Every mouse movement shifts a floating market "board" in 3D
+// (candles, coins, price ticks at three parallax depths) and
+// occasionally pops a fresh candle/price chip from the pointer;
+// clicks burst a spread of candles. Desktop, fine pointer only.
+// ============================================================
+(function mkt3dFX() {
+  const fine = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!fine || reduced) return;
+
+  // --- 1) Depth field -------------------------------------------------
+  const holder = document.createElement('div');
+  holder.id = 'mktDepth';
+  holder.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(holder);
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  [180, 90, 36].forEach((z, li) => {
+    const layer = document.createElement('div');
+    layer.className = 'mkt-layer';
+    layer.style.transform = 'translateZ(' + z + 'px)';
+    for (let i = 0; i < 16; i++) {
+      const el = document.createElement('div');
+      const k = Math.random();
+      const base = k < 0.38 ? 'candle' : k < 0.62 ? 'coin' : k < 0.86 ? 'glyph' : 'tick';
+      el.className = 'mkt-token mkt-' + base;
+      if (base === 'candle') el.classList.add(Math.random() < 0.6 ? 'up' : 'down');
+      if (base === 'glyph') el.textContent = ['₹', '%', '+', '▲', '▼'][Math.floor(Math.random() * 5)];
+      if (base === 'tick') {
+        const v = rnd(1.5, 4.2) * 1000;
+        el.textContent = (Math.random() < 0.5 ? '▲' : '▼') + ' ' + Math.round(v).toLocaleString('en-IN');
+        el.style.fontSize = (7 + Math.floor(rnd(0, 3))) + 'px';
+      }
+      el.style.left = rnd(0, 100) + '%';
+      el.style.top = rnd(0, 100) + '%';
+      el.style.transform = (el.style.transform || '') + ' rotate(' + rnd(-24, 24).toFixed(1) + 'deg)';
+      el.style.opacity = String(rnd(0.5, 1) * (base === 'coin' ? 0.1 : base === 'candle' ? 0.09 : 0.1));
+      layer.appendChild(el);
+    }
+    holder.appendChild(layer);
+  });
+
+  let tx = 0, ty = 0, cx = 0, cy = 0;
+  document.addEventListener('mousemove', (e) => {
+    tx = (e.clientX / window.innerWidth - 0.5) * 2;
+    ty = (e.clientY / window.innerHeight - 0.5) * 2;
+  }, { passive: true });
+  (function depthTick() {
+    cx += (tx - cx) * 0.055;
+    cy += (ty - cy) * 0.055;
+    holder.style.transform =
+      'perspective(900px) rotateX(' + (cy * -5).toFixed(2) + 'deg) rotateY(' + (cx * 7).toFixed(2) + 'deg)';
+    requestAnimationFrame(depthTick);
+  })();
+
+  // --- 2) Tick pops (candles & price chips) ---------------------------
+  const pops = document.createElement('div');
+  pops.id = 'mktPops';
+  pops.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(pops);
+
+  function makePop(x, y) {
+    const c = document.createElement('div');
+    const r = Math.random();
+    if (r < 0.15) {
+      const neg = Math.random() < 0.35;
+      const v = rnd(1.2, 4.6) * 1000;
+      c.className = 'tick-pop price' + (neg ? ' neg' : '');
+      c.textContent = (neg ? '▼ ' : '▲ ') + Math.round(v).toLocaleString('en-IN');
+      c.style.setProperty('--drift', rnd(-8, 8).toFixed(1) + 'px');
+      c.style.setProperty('--spin', rnd(-6, 6).toFixed(1) + 'deg');
+    } else {
+      c.className = 'tick-pop ' + (Math.random() < 0.62 ? 'up' : 'down') + (Math.random() < 0.28 ? ' big' : '');
+      c.style.setProperty('--drift', rnd(-14, 14).toFixed(1) + 'px');
+      c.style.setProperty('--spin', rnd(-30, 30).toFixed(1) + 'deg');
+    }
+    c.style.left = (x + rnd(-8, 8)) + 'px';
+    c.style.top = (y + rnd(-8, 8)) + 'px';
+    pops.appendChild(c);
+    setTimeout(() => { if (c.parentNode) c.parentNode.removeChild(c); }, 1300);
+  }
+  function tickBurst(x, y, n) { for (let i = 0; i < n; i++) makePop(x, y); }
+
+  let lastTick = 0;
+  document.addEventListener('mousemove', (e) => {
+    const now = performance.now();
+    if (now - lastTick > 170 && Math.random() < 0.4) {
+      lastTick = now;
+      makePop(e.clientX, e.clientY);
+    }
+  }, { passive: true });
+  document.addEventListener('mousedown', (e) => tickBurst(e.clientX, e.clientY, 9));
+})();
 
   // Start app
   document.addEventListener('DOMContentLoaded', init);
