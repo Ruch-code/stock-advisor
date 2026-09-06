@@ -315,8 +315,9 @@ async function tradesEconomicsQuotes() {
     const res = await fetch('https://tradingeconomics.com/india/stock-market', {
       headers: { 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9' }
     });
-    if (!res.ok) return null;
+    if (!res.ok) { diag.push(`te status: ${res.status}`); return null; }
     const html = await res.text();
+    diag.push(`te bytes: ${html.length}`);
     const rows = [];
     const labelRe = /<a href="[^"]*">\s*([A-Z0-9& .]+?)\s*<\/a>/g;
     let m;
