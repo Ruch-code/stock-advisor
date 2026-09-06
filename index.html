@@ -3706,7 +3706,7 @@ function mktTileHTML(t) {
 function readHeldIndices() { try { return JSON.parse(localStorage.getItem('stockpulse_indices') || 'null'); } catch (e) { return null; } }
 function saveHeldIndices(result, at) { try { localStorage.setItem('stockpulse_indices', JSON.stringify({ result, at })); } catch (e) {} }
 
-function mktRowsToHTML(bySym, opts) {
+function mktRowsToHTML(bySym) {
   return MKT_TICKER_SYMBOLS.map(m => {
     const x = bySym[m.sym];
     const has = x && x.regularMarketPrice != null;
@@ -3714,12 +3714,20 @@ function mktRowsToHTML(bySym, opts) {
       k: m.k,
       v: has ? x.regularMarketPrice : null,
       chg: has && x.regularMarketChangePercent != null ? x.regularMarketChangePercent : null,
-      live: !!opts.live,
-      delayed: !!opts.delayed,
-      held: !!opts.held,
-      asOf: opts.asOf
+      live: has && x._live === true,
+      delayed: has && x._delayed === true && x._live !== true,
+      held: has && x._held === true,
+      asOf: has ? x._asOf : null
     });
   }).join('');
+}
+
+function mktTagline(bySym) {
+  const vals = bySym ? Object.keys(bySym).map(k => bySym[k]) : [];
+  if (!vals.length) return 'held · retrying live';
+  if (vals.some(x => x._held === true)) return 'NSE/BSE · live+held · retrying';
+  if (vals.some(x => x._delayed === true)) return 'NSE/BSE · delays may apply';
+  return 'NSE/BSE · live';
 }
 
 let mktTimer = null;
@@ -3742,9 +3750,9 @@ async function loadMarketTicker() {
     const held = readHeldIndices();
     if (held && held.result && held.result.length) {
       const bySym = {};
-      held.result.forEach(x => { if (x) bySym[x.symbol] = x; });
-      finish(mktRowsToHTML(bySym, { held: true, asOf: held.at }) +
-        '<span class="ticker-item text-keyboard-silver/35">held · retrying live</span>', true);
+      held.result.forEach(x => { if (x) bySym[x.symbol] = { _held: true, _asOf: held.at, ...x }; });
+      finish(mktRowsToHTML(bySym) +
+        '<span class="ticker-item text-keyboard-silver/35">' + mktTagline(bySym) + '</span>', true);
       return;
     }
     finish(MKT_TICKER_SYMBOLS.map(m => mktTileHTML({ k: m.k, v: null, chg: null })).join('') +
@@ -3760,13 +3768,10 @@ async function loadMarketTicker() {
     if (rows && rows.length) {
       const bySym = {};
       rows.forEach(x => { if (x) bySym[x.symbol] = x; });
-      const live = !d._stale && d._src === 'yahoo';
-      const delayed = d._src === 'chart';
-      const held = !!d._stale;
-      finish(mktRowsToHTML(bySym, { live, delayed, held, asOf: d._asOf }) +
-        '<span class="ticker-item text-keyboard-silver/35">' +
-        (held ? 'held · retrying live' : delayed ? 'NSE via Yahoo · chart-derived' : 'NSE/BSE · live') + '</span>', held);
-      if (!held) saveHeldIndices(rows, d._asOf || Date.now());
+      const allHeld = rows.length > 0 && rows.every(x => x._held === true);
+      finish(mktRowsToHTML(bySym) +
+        '<span class="ticker-item text-keyboard-silver/35">' + mktTagline(bySym) + '</span>', allHeld);
+      if (!allHeld) saveHeldIndices(rows.map(r => { const c = { ...r }; delete c._live; delete c._delayed; delete c._held; delete c._asOf; return c; }), d._asOf || Date.now());
       return;
     }
   } catch (e) { /* fall through */ }
@@ -3777,8 +3782,8 @@ async function loadMarketTicker() {
     const res = q && q.quoteResponse && q.quoteResponse.result;
     if (res && res.length) {
       const bySym = {};
-      res.forEach(x => { if (x) bySym[x.symbol] = x; });
-      finish(mktRowsToHTML(bySym, { live: true }) +
+      res.forEach(x => { if (x) bySym[x.symbol] = { _live: true, ...x }; });
+      finish(mktRowsToHTML(bySym) +
         '<span class="ticker-item text-keyboard-silver/35">NSE/BSE via Yahoo · direct</span>', false);
       saveHeldIndices(res, Date.now());
       return;

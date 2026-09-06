@@ -307,6 +307,43 @@ async function yahooQuoteFromCharts(symbols) {
   return rows.length ? rows : null;
 }
 
+// Trading Economics — India markets page contains NIFTY 50 + SENSEX quotes rendered
+// server-side. Serves as a DC-IP-friendly "always-on" layer while Yahoo throttles us:
+// one HTML fetch, parsed for label → price + % change. (No key, no CORS issues.)
+async function tradesEconomicsQuotes() {
+  try {
+    const res = await fetch('https://tradingeconomics.com/india/stock-market', {
+      headers: { 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9' }
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const rows = [];
+    const labelRe = /<a href="[^"]*">\s*([A-Z0-9& .]+?)\s*<\/a>/g;
+    let m;
+    while ((m = labelRe.exec(html))) {
+      const name = m[1].trim();
+      const look = html.slice(m.index, m.index + 300);
+      const priceM = look.match(/id="p">([0-9.,]+)<\/td>/);
+      const pctM = look.match(/id="pch"[^>]*>([\-0-9.]+)%/);
+      if (!priceM) continue;
+      const price = parseFloat(priceM[1].replace(/,/g, ''));
+      if (isNaN(price)) continue;
+      const lb = name.toLowerCase();
+      const symbol = lb === 'nifty 50' ? '^NSEI' : lb === 'sensex' ? '^BSESN' : null;
+      if (!symbol) continue;
+      rows.push({
+        symbol,
+        regularMarketPrice: price,
+        regularMarketChangePercent: pctM ? parseFloat(pctM[1]) : null,
+        regularMarketTime: Math.floor(Date.now() / 1000),
+        currency: 'INR',
+        _srcName: 'TradingEconomics'
+      });
+    }
+    return rows.length ? rows : null;
+  } catch (e) { return null; }
+}
+
 export default async (event, context) => {
   const isRequest = event && typeof event === 'object' && typeof event.url === 'string' && Object.keys(event).length === 0;
   const method = isRequest ? event.method : (event && event.httpMethod) || 'GET';
@@ -335,19 +372,52 @@ export default async (event, context) => {
     if (qCached) return corsResponse(JSON.stringify(qCached), 200, { 'Cache-Control': 'public, max-age=15' });
     const wantDebug = params.debug === '1';
     diag = [];
-    let result = null, source = 'yahoo', stale = false, asOf = Date.now();
-    try { result = await yahooQuoteBatch(symbols); } catch (e) { diag.push(`quote batch error: ${e.message}`); }
-    if (!result || !result.length) {
-      const rows = await yahooQuoteFromCharts(symbols);
-      if (rows) { result = rows; source = 'chart'; }
+    const merged = new Map();
+    const put = (row, live, delayed, held, asOf) => {
+      const prev = merged.get(row.symbol);
+      if (prev && !prev._held) return; // keep a fresher value over held
+      merged.set(row.symbol, { ...row, _live: live, _delayed: delayed, _held: held, _asOf: asOf });
+    };
+
+    // Layer 1 — Trading Economics (DC-friendly headline indices, always-on when Yahoo throttles)
+    try {
+      const te = await tradesEconomicsQuotes();
+      if (te) te.forEach((r) => put(r, true, false, false, null));
+    } catch (e) { diag.push(`te error: ${e.message}`); }
+
+    // Layer 2 — Yahoo v7 batch (all four, exact LTP; needs cookie+crumb)
+    try {
+      const y = await yahooQuoteBatch(symbols);
+      if (y) y.forEach((r) => put(r, true, false, false, null));
+    } catch (e) { diag.push(`quote batch error: ${e.message}`); }
+
+    // Layer 3 — v8 chart fills for whatever is still missing (delayed, last close)
+    const needChart = symbols.filter((s) => !merged.has(s));
+    if (needChart.length) {
+      const c = await yahooQuoteFromCharts(needChart);
+      if (c) c.forEach((r) => put(r, false, true, false, null));
     }
-    if (!result || !result.length) {
+
+    // Layer 4 — held last-known-good values for anything still missing (never a dead tile)
+    const needHeld = symbols.filter((s) => !merged.has(s));
+    if (needHeld.length) {
       const st = staleGet(qKey);
-      if (st) { result = st.v; stale = true; asOf = st.t; }
+      if (st) st.v.filter((r) => needHeld.includes(r.symbol)).forEach((r) => put(r, false, false, true, st.t));
     }
-    if (result && result.length) {
-      const body = { quoteResponse: { result }, _src: source, _stale: stale, _asOf: asOf };
-      if (!stale) { cacheSet(qKey, body); staleSet(qKey, result); }
+
+    const result = [...merged.values()];
+    if (result.length) {
+      const anyHeld = result.some((r) => r._held);
+      const anyYahoo = result.some((r) => r._srcName === 'Yahoo');
+      const anyTE = result.some((r) => r._srcName === 'TradingEconomics');
+      const body = {
+        quoteResponse: { result },
+        _src: anyYahoo ? (anyTE ? 'yahoo+te' : 'yahoo') : (anyTE ? 'te' : 'chart'),
+        _stale: result.every((r) => r._held),
+        _asOf: Date.now(),
+        _freshCount: result.filter((r) => !r._held).length
+      };
+      if (!body._stale) { cacheSet(qKey, body); staleSet(qKey, result); }
       return corsResponse(JSON.stringify(body), 200, { 'Cache-Control': 'public, max-age=15' });
     }
     const body = { error: 'live sources unavailable', detail: 'all quote sources throttled' };
