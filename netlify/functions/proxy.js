@@ -211,18 +211,18 @@ async function yahooChart(symbol, interval, range) {
   let s = null;
   try { s = await yahooCrumb(); } catch (e) { diag.push(`crumb error (continuing w/o): ${e.message}`); }
 
-  // Interleave hosts and crumb usage; retry with growing backoff for transient 429s
+  // Interleave hosts and crumb usage. If the IP is hard-throttled (429 on early
+  // hosts) we bail fast instead of grinding through combos — the caller retries
+  // on the next ticker poll anyway.
   const combos = [];
   if (s) {
-    YAHOO_HOSTS.forEach((h) => combos.push({ host: h, crumb: true }));
-    YAHOO_HOSTS.forEach((h) => combos.push({ host: h, crumb: false }));
+    YAHOO_HOSTS.forEach((h) => combos.push({ host: h, crumb: true }, { host: h, crumb: false }));
   } else {
     YAHOO_HOSTS.forEach((h) => combos.push({ host: h, crumb: false }));
   }
-  combos.push(...combos); // second pass after backoff
 
   let lastRes = null;
-  let waitMs = 600;
+  let throttledCount = 0;
   for (const a of combos) {
     const url = `${a.host}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}` +
       (a.crumb ? `&crumb=${encodeURIComponent(s.crumb)}` : '');
@@ -232,13 +232,17 @@ async function yahooChart(symbol, interval, range) {
       'Referer': 'https://finance.yahoo.com/'
     };
     if (s) headers['Cookie'] = s.cookie;
-    const res = await fetch(url, { headers });
+    let res = null;
+    try {
+      res = await fetch(url, { headers });
+    } catch (e) { diag.push(`chart ${a.host} fetch error`); continue; }
     lastRes = res;
     diag.push(`chart ${a.host} crumb=${a.crumb} -> ${res.status}`);
     if (res.status === 200) return res;
-    if (res.status === 401 || res.status === 403 && s) break; // crumb gone stale; re-mint next call
-    await sleep(waitMs);
-    waitMs = Math.min(2500, waitMs * 2);
+    if (res.status === 429) throttledCount++;
+    if (res.status === 401 && s) break; // crumb gone stale; re-mint next call
+    if (throttledCount >= Math.max(1, combos.length - 1)) break; // IP throttle: stop early
+    await sleep(350);
   }
   return lastRes;
 }
@@ -278,7 +282,7 @@ async function yahooQuoteBatch(symbols) {
 // Build quote rows from the no-crumb v8 chart endpoint (last close vs previous close).
 async function yahooQuoteFromCharts(symbols) {
   const rows = [];
-  for (const sym of symbols) {
+  await Promise.all(symbols.map(async (sym) => {
     try {
       const res = await yahooChart(sym, '1d', '5d');
       if (res && res.ok) {
@@ -299,8 +303,7 @@ async function yahooQuoteFromCharts(symbols) {
         }
       }
     } catch (e) { /* skip symbol */ }
-    if (rows.length >= symbols.length) break;
-  }
+  }));
   return rows.length ? rows : null;
 }
 
