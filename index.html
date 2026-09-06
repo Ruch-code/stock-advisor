@@ -3391,6 +3391,25 @@ function buildMarketMap(cur, piv, hi, lo) {
 async function loadNifty() {
   const unavail = document.getElementById('niftyUnavailable');
   document.getElementById('niftyStatus').innerHTML = '<span class="text-[10px] text-keyboard-silver/50">checking live feed…</span>';
+  let liveQuote = null;
+  try {
+    const res = await fetchWithTimeout(API.YAHOO_QUOTE + '?mode=quote&symbols=' + encodeURIComponent('^NSEI'), {}, 15000);
+    const d = await res.json();
+    const r = d && d.quoteResponse && d.quoteResponse.result && d.quoteResponse.result[0];
+    if (r && r.regularMarketPrice != null) liveQuote = r;
+  } catch (e) { /* quote path unavailable */ }
+
+  if (liveQuote) {
+    const cur = liveQuote.regularMarketPrice;
+    const chg = liveQuote.regularMarketChangePercent != null ? liveQuote.regularMarketChangePercent : 0;
+    document.getElementById('niftyValue').textContent = nfmt(cur);
+    document.getElementById('niftyChange').innerHTML = '<span class="' + (chg >= 0 ? 'text-green-400' : 'text-red-400') + '">' + (chg >= 0 ? '▲' : '▼') + ' ' + formatPercent(chg) + '</span> <span class="text-keyboard-silver/40">' + (chg >= 0 ? 'higher' : 'lower') + '</span>';
+    document.getElementById('niftyStatus').innerHTML = '<span class="text-[10px] font-bold px-2 py-1 rounded bg-green-500/15 text-green-400">' + (liveQuote._held === true ? 'HELD' : 'LIVE') + '</span>';
+    unavail.classList.add('hidden');
+    state.niftyLive = true;
+    renderRoadmap();
+  }
+
   for (const sym of NIFTY_SYMBOLS) {
     try {
       const d = await fetchYahooQuoteData(sym, '1d', '1y');
@@ -3403,10 +3422,12 @@ async function loadNifty() {
         const piv = realHist ? computePivots(candles) : null;
         const hi = realHist ? Math.max.apply(null, candles.map(c => c.high)) : cur;
         const lo = realHist ? Math.min.apply(null, candles.map(c => c.low)) : cur;
-        document.getElementById('niftyValue').textContent = nfmt(cur);
-        const chgEl = document.getElementById('niftyChange');
-        chgEl.innerHTML = '<span class="' + (chg >= 0 ? 'text-green-400' : 'text-red-400') + '">' + (chg >= 0 ? '▲' : '▼') + ' ' + formatPercent(chg) + '</span> <span class="text-keyboard-silver/40">' + (chg >= 0 ? 'higher' : 'lower') + (realHist ? ' today' : ' (live quote)') + '</span>';
-        document.getElementById('niftyStatus').innerHTML = (realHist ? '<span class="text-[10px] font-bold px-2 py-1 rounded bg-green-500/15 text-green-400">LIVE</span>' : '<span class="text-[10px] font-bold px-2 py-1 rounded bg-purple-glow/15 text-purple-light">LIVE · realtime quote</span>');
+        if (!liveQuote) {
+          document.getElementById('niftyValue').textContent = nfmt(cur);
+          const chgEl = document.getElementById('niftyChange');
+          chgEl.innerHTML = '<span class="' + (chg >= 0 ? 'text-green-400' : 'text-red-400') + '">' + (chg >= 0 ? '▲' : '▼') + ' ' + formatPercent(chg) + '</span> <span class="text-keyboard-silver/40">' + (chg >= 0 ? 'higher' : 'lower') + (realHist ? ' today' : ' (live quote)') + '</span>';
+          document.getElementById('niftyStatus').innerHTML = (realHist ? '<span class="text-[10px] font-bold px-2 py-1 rounded bg-green-500/15 text-green-400">LIVE</span>' : '<span class="text-[10px] font-bold px-2 py-1 rounded bg-purple-glow/15 text-purple-light">LIVE · realtime quote</span>');
+        }
         // 52-week bands (only from real history; browser-direct fallback is a live quote)
         document.getElementById('niftyBands').innerHTML = realHist ? [
           ['52-week high', hi, 'text-red-400'],
@@ -3431,8 +3452,10 @@ async function loadNifty() {
       }
     } catch (e) { /* try next symbol */ }
   }
-  document.getElementById('niftyStatus').innerHTML = '<span class="text-[10px] font-bold px-2 py-1 rounded bg-red-500/15 text-red-300">NO FEED</span>';
-  unavail.classList.remove('hidden');
+  if (!liveQuote) {
+    document.getElementById('niftyStatus').innerHTML = '<span class="text-[10px] font-bold px-2 py-1 rounded bg-red-500/15 text-red-300">NO FEED</span>';
+    unavail.classList.remove('hidden');
+  }
 }
 
 // ============================================================
