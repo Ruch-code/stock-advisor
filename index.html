@@ -3650,21 +3650,26 @@ async function yahooChartJsonp(symbol, interval, range, timeoutMs) {
 }
 
 async function yahooQuoteJsonp(symbols, timeoutMs) {
-  return new Promise((resolve) => {
-    const done = (data) => { cleanup(); resolve(data); };
-    const cb = 'yhooQ' + Date.now() + Math.floor(Math.random() * 1e4);
-    const scr = document.createElement('script');
-    const timer = setTimeout(() => done(null), timeoutMs || 8000);
-    function cleanup() {
-      clearTimeout(timer);
-      try { delete window[cb]; } catch (e) {}
-      if (scr.parentNode) scr.parentNode.removeChild(scr);
-    }
-    window[cb] = (data) => done(data);
-    scr.onerror = () => done(null);
-    scr.src = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + symbols.map(s => encodeURIComponent(s)).join(',') + '&cb=' + cb;
-    document.head.appendChild(scr);
-  });
+  const hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+  for (const host of hosts) {
+    const found = await new Promise((resolve) => {
+      const done = (data) => { cleanup(); resolve(data); };
+      const cb = 'yhooQ' + Date.now() + Math.floor(Math.random() * 1e4);
+      const scr = document.createElement('script');
+      const timer = setTimeout(() => done(null), timeoutMs || 8000);
+      function cleanup() {
+        clearTimeout(timer);
+        try { delete window[cb]; } catch (e) {}
+        if (scr.parentNode) scr.parentNode.removeChild(scr);
+      }
+      window[cb] = (data) => done(data);
+      scr.onerror = () => done(null);
+      scr.src = 'https://' + host + '/v7/finance/quote?symbols=' + symbols.map(s => encodeURIComponent(s)).join(',') + '&cb=' + cb;
+      document.head.appendChild(scr);
+    });
+    if (found && found.quoteResponse && found.quoteResponse.result && found.quoteResponse.result.length) return found;
+  }
+  return null;
 }
 
 // ============================================================
@@ -3717,21 +3722,33 @@ function mktRowsToHTML(bySym, opts) {
   }).join('');
 }
 
+let mktTimer = null;
+function scheduleTicker(ms) {
+  clearTimeout(mktTimer);
+  mktTimer = setTimeout(() => loadMarketTicker(), ms);
+}
+
 async function loadMarketTicker() {
   const track = document.getElementById('mktTrack');
   if (!track) return;
+
+  function finish(html, held) {
+    track.innerHTML = html;
+    // Re-poll fast while held (7s) so a live window is caught quickly; 30s when live
+    scheduleTicker(held ? 12000 : 30000);
+  }
 
   function renderHeldOrPlaceholder() {
     const held = readHeldIndices();
     if (held && held.result && held.result.length) {
       const bySym = {};
       held.result.forEach(x => { if (x) bySym[x.symbol] = x; });
-      track.innerHTML = mktRowsToHTML(bySym, { held: true, asOf: held.at }) +
-        '<span class="ticker-item text-keyboard-silver/35">held · retrying live</span>';
+      finish(mktRowsToHTML(bySym, { held: true, asOf: held.at }) +
+        '<span class="ticker-item text-keyboard-silver/35">held · retrying live</span>', true);
       return;
     }
-    track.innerHTML = MKT_TICKER_SYMBOLS.map(m => mktTileHTML({ k: m.k, v: null, chg: null })).join('') +
-      '<span class="ticker-item text-yellow-500/70">connecting to NSE/BSE live feed…</span>';
+    finish(MKT_TICKER_SYMBOLS.map(m => mktTileHTML({ k: m.k, v: null, chg: null })).join('') +
+      '<span class="ticker-item text-yellow-500/70">connecting to NSE/BSE live feed…</span>', true);
   }
 
   // 1) Primary: ONE server-side batch quote call (live LTP, single request)
@@ -3746,9 +3763,9 @@ async function loadMarketTicker() {
       const live = !d._stale && d._src === 'yahoo';
       const delayed = d._src === 'chart';
       const held = !!d._stale;
-      track.innerHTML = mktRowsToHTML(bySym, { live, delayed, held, asOf: d._asOf }) +
+      finish(mktRowsToHTML(bySym, { live, delayed, held, asOf: d._asOf }) +
         '<span class="ticker-item text-keyboard-silver/35">' +
-        (held ? 'held · retrying live' : delayed ? 'NSE via Yahoo · chart-derived' : 'NSE/BSE · live') + '</span>';
+        (held ? 'held · retrying live' : delayed ? 'NSE via Yahoo · chart-derived' : 'NSE/BSE · live') + '</span>', held);
       if (!held) saveHeldIndices(rows, d._asOf || Date.now());
       return;
     }
@@ -3761,8 +3778,8 @@ async function loadMarketTicker() {
     if (res && res.length) {
       const bySym = {};
       res.forEach(x => { if (x) bySym[x.symbol] = x; });
-      track.innerHTML = mktRowsToHTML(bySym, { live: true }) +
-        '<span class="ticker-item text-keyboard-silver/35">NSE/BSE via Yahoo · direct</span>';
+      finish(mktRowsToHTML(bySym, { live: true }) +
+        '<span class="ticker-item text-keyboard-silver/35">NSE/BSE via Yahoo · direct</span>', false);
       saveHeldIndices(res, Date.now());
       return;
     }
@@ -4673,8 +4690,8 @@ async function init() {
   // Start live updates
   startLiveUpdates();
 
-  // Refresh market condition + ticker every 60s
-  setInterval(() => { loadNewsTicker(); loadMarketTicker(); }, 60000);
+  // Refresh news ticker every 60s (market ticker schedules its own retries)
+  setInterval(() => { loadNewsTicker(); }, 60000);
 
   // Price alert checks every 20s
   setInterval(() => checkAlerts(), 20000);
