@@ -555,14 +555,16 @@ async function explainChat(keys, body) {
 async function explainChatFallback(keys, body) {
   const primary = body.model || 'gpt-6-astra';
   const tried = {};
+  const allFailures = [];
   const modelOrder = [primary, ...Object.keys(EXPLABS_MODELS)];
   for (const m of modelOrder) {
     if (tried[m]) continue;
     tried[m] = true;
     const r = await explainChat(keys, { ...body, model: m });
     if (r.ok) { r.fellBackTo = m !== primary; return r; }
+    allFailures.push(...(r.errors || []).map(e => m + ': ' + e));
   }
-  return { ok: false, model: primary, errors: [], allFailed: true };
+  return { ok: false, model: primary, errors: allFailures.slice(0, 8), allFailed: true };
 }
 
 // Trading Economics — India markets page contains NIFTY 50 + SENSEX quotes rendered
