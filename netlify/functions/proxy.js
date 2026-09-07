@@ -495,6 +495,71 @@ async function keyedIndexQuotes(symbols, merged, put) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// AI CHAT — Experiential Labs OpenAI-compatible gateway (mode=chat).
+// Slugs: gpt-6-astra, gpt-5.6-luna, deepseek-v4-flash, qwen3.8-27b.
+// Bulk of this file is about NOT reproducing code; this gate Call with these.
+// ---------------------------------------------------------------------------
+const EXPLABS_BASE = 'https://api.experientiallabs.ai/v1';
+
+// { slug: modelMeta } — each with narrower field names we let the model edit.
+const EXPLABS_MODELS = {
+  'gpt-6-astra':     { label: 'GPT-6 Astra',       context: 1048576, maxOut: 128 * 1024, tags: 'flagship · reasoning' },
+  'gpt-5.6-luna':    { label: 'GPT-5.6 Luna',      context: 1100800, maxOut: 128 * 1024, tags: 'fast reasoning' },
+  'deepseek-v4-flash': { label: 'DeepSeek V4 Flash', context: 1100800, maxOut: 128 * 1024, tags: 'cheap · coding' },
+  'qwen3.8-27b':     { label: 'Qwen3.8 27B',       context: 1024 * 1024, maxOut: 64 * 1024, tags: 'free · open' }
+};
+
+async function explainChat(keys, body) {
+  const model = body.model || 'gpt-6-astra';
+  const maxTokens = Math.min(2048, (EXPLABS_MODELS[model] && EXPLABS_MODELS[model].maxOut) || 2048);
+  const payload = {
+    model,
+    messages: body.messages || [],
+    temperature: 0.4,
+    max_tokens: maxTokens
+  };
+  const errors = [];
+  for (const key of keys) {
+    try {
+      const res = await fetch(EXPLABS_BASE + '/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+        body: JSON.stringify(payload)
+      });
+      const txt = await res.text();
+      if (!res.ok) { errors.push(`${model} ${res.status}: ${txt.slice(0, 120)}`); continue; }
+      let d; try { d = JSON.parse(txt); } catch (e) { errors.push('bad json'); continue; }
+      const msg = d && d.choices && d.choices[0] && d.choices[0].message;
+      const content = msg && (msg.content || '');
+      if (content == null) { errors.push('no content'); continue; }
+      const plain = Array.isArray(content) ? content.map((c) => c.text || '').join('') : content;
+      return {
+        ok: true,
+        model,
+        reply: plain,
+        usage: (d && d.usage) || null,
+        finish: d && d.choices && d.choices[0].finish_reason
+      };
+    } catch (e) { errors.push(`fetch: ${e.message}`); }
+  }
+  return { ok: false, model, errors };
+}
+
+// Fall back across the full set of available models if the primary one fails.
+async function explainChatFallback(keys, body) {
+  const primary = body.model || 'gpt-6-astra';
+  const tried = {};
+  const modelOrder = [primary, ...Object.keys(EXPLABS_MODELS)];
+  for (const m of modelOrder) {
+    if (tried[m]) continue;
+    tried[m] = true;
+    const r = await explainChat(keys, { ...body, model: m });
+    if (r.ok) { r.fellBackTo = m !== primary; return r; }
+  }
+  return { ok: false, model: primary, errors: [], allFailed: true };
+}
+
 // Trading Economics — India markets page contains NIFTY 50 + SENSEX quotes rendered
 // server-side. Serves as a DC-IP-friendly "always-on" layer while Yahoo throttles us:
 // one HTML fetch, parsed for label → price + % change. (No key, no CORS issues.)
@@ -551,6 +616,24 @@ export default async (event, context) => {
   if (!/^[a-zA-Z0-9]+$/.test(range)) range = '5d';
 
   if (params.mode === 'news') return await handleNews(params.topic || 'markets');
+
+  // AI Market Advisor — Proxies to the Experiential Labs gateway so the browser
+  // never sees a key. message is the user's text; model is optional.
+  if (params.mode === 'chat') {
+    const keys = keyList('EXPLABS');
+    if (!keys.length) return corsResponse(JSON.stringify({ error: 'EXPLABS_API_KEY not configured' }), 200);
+    const message = String(params.message || '').trim();
+    if (!message) return corsResponse(JSON.stringify({ error: 'message required' }), 400);
+    const model = String(params.model || 'gpt-6-astra').trim();
+    const r = await explainChatFallback(keys, {
+      model,
+      messages: [
+        { role: 'system', content: 'You are an expert stock-market analyst for Indian markets (NIFTY, SENSEX, Bank Nifty, India VIX) plus global markets. Give concise, accurate, actionable answers with clear buy/sell/hold reasoning where relevant. Educational only — remind when relevant that this is not financial advice.' },
+        { role: 'user', content: message }
+      ]
+    });
+    return corsResponse(JSON.stringify(r), r.ok ? 200 : 200);
+  }
 
   // Batch live quote endpoint (used by the market ticker): ONE call for all indices.
   if (params.mode === 'quote') {

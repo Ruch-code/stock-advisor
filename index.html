@@ -1517,6 +1517,36 @@
     </div>
   </footer>
 
+  <!-- AI Market Advisor — floating chat widget (Experiential Labs gateway) -->
+  <button id="chatFab" onclick="toggleAIChat()" class="fixed bottom-5 right-5 z-[60] h-14 w-14 rounded-full bg-gradient-to-br from-purple-glow to-blue-500 text-white shadow-lg shadow-purple-900/40 flex items-center justify-center text-2xl hover:scale-105 transition-transform" aria-label="Ask AI Market Advisor">🤖</button>
+  <div id="aiChatPanel" class="hidden fixed bottom-24 right-5 z-[60] w-[min(92vw,380px)] rounded-2xl bg-keyboard-black/95 backdrop-blur-xl border border-keyboard-grey/30 shadow-2xl flex flex-col overflow-hidden" style="max-height:min(70vh,540px)">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-keyboard-grey/30 bg-keyboard-black/60">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">🤖</span>
+        <div>
+          <p class="text-xs font-bold text-keyboard-light leading-none">AI Market Advisor</p>
+          <p id="aiChatModelLabel" class="text-[9px] text-keyboard-silver/50 mt-0.5 leading-none">GPT-6 Astra</p>
+        </div>
+      </div>
+      <button onclick="toggleAIChat()" class="text-keyboard-silver/60 hover:text-keyboard-light text-sm px-1" aria-label="Close">✕</button>
+    </div>
+    <div class="flex items-center gap-1 px-3 py-1.5 border-b border-keyboard-grey/30 bg-keyboard-black/40">
+      <span class="text-[9px] text-keyboard-silver/50">Model</span>
+      <select id="aiChatModel" onchange="updateAIChatModel()" class="flex-1 bg-keyboard-black/70 text-keyboard-light text-[10px] rounded-md border border-keyboard-grey/40 px-1.5 py-1 outline-none">
+        <option value="gpt-6-astra">GPT-6 Astra</option>
+        <option value="gpt-5.6-luna">GPT-5.6 Luna</option>
+        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+        <option value="qwen3.8-27b">Qwen3.8 27B</option>
+      </select>
+    </div>
+    <div id="aiChatBody" class="flex-1 overflow-y-auto px-3 py-2 space-y-2 text-[11px] leading-relaxed min-h-[160px]"></div>
+    <div id="aiChatThinking" class="hidden px-3 pb-1 text-[10px] text-keyboard-silver/50 italic">Thinking…</div>
+    <div class="border-t border-keyboard-grey/30 p-2 flex gap-2">
+      <input id="aiChatInput" type="text" placeholder="Ask about NIFTY, a stock, or the market…" class="flex-1 bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-2.5 py-2 border border-keyboard-grey/40 focus:border-purple-glow/50 outline-none" onkeydown="if(event.key==='Enter')sendAIChat()">
+      <button onclick="sendAIChat()" class="px-3 py-2 rounded-lg bg-purple-glow/20 text-purple-light text-xs font-semibold hover:bg-purple-glow/30 transition-colors">➤</button>
+    </div>
+  </div>
+
 <script>
 // ============================================================
 // STATE MANAGEMENT
@@ -4976,8 +5006,72 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('mousedown', (e) => tickBurst(e.clientX, e.clientY, 9));
 })();
 
+// ============================================================
+// AI MARKET ADVISOR — Experiential Labs chat widget
+// ============================================================
+const AI_MODELS = {
+  'gpt-6-astra':       'GPT-6 Astra',
+  'gpt-5.6-luna':      'GPT-5.6 Luna',
+  'deepseek-v4-flash': 'DeepSeek V4 Flash',
+  'qwen3.8-27b':       'Qwen3.8 27B'
+};
+let aiChatOpen = false;
+
+function toggleAIChat() {
+  aiChatOpen = !aiChatOpen;
+  const p = document.getElementById('aiChatPanel');
+  const f = document.getElementById('chatFab');
+  p.classList.toggle('hidden', !aiChatOpen);
+  f.style.display = aiChatOpen ? 'none' : 'flex';
+  if (aiChatOpen) document.getElementById('aiChatInput').focus();
+  if (aiChatOpen && document.getElementById('aiChatBody').children.length === 0) {
+    aiAppend('ai','Hi! Ask me anything about Indian or global markets — NIFTY, SENSEX, Bank Nifty, a specific stock, or market strategy.');
+  }
+}
+
+function updateAIChatModel() {
+  const m = document.getElementById('aiChatModel').value;
+  document.getElementById('aiChatModelLabel').textContent = AI_MODELS[m] || m;
+}
+
+function aiAppend(role, text) {
+  const body = document.getElementById('aiChatBody');
+  const row = document.createElement('div');
+  row.className = 'ai-msg ' + (role === 'user'
+    ? 'self-end bg-purple-glow/15 text-keyboard-light border border-purple-glow/30'
+    : 'self-start bg-keyboard-black/60 text-keyboard-silver/90 border border-keyboard-grey/25');
+  row.style.cssText += 'max-width:88%;padding:7px 9px;border-radius:12px;white-space:pre-wrap;word-break:break-word;';
+  row.textContent = text;
+  body.appendChild(row);
+  body.scrollTop = body.scrollHeight;
+  return row;
+}
+
+async function sendAIChat() {
+  const inp = document.getElementById('aiChatInput');
+  const q = inp.value.trim();
+  if (!q) return;
+  inp.value = '';
+  aiAppend('user', q);
+  const think = document.getElementById('aiChatThinking');
+  think.classList.remove('hidden');
+  const model = document.getElementById('aiChatModel').value;
+  const qs = new URLSearchParams({ mode: 'chat', model, message: q });
+  let reply = '⚠️ The AI advisor isn\'t reachable right now — check that EXPLABS_API_KEY is set in Netlify.';
+  try {
+    const res = await fetchWithTimeout(API.YAHOO_QUOTE + '?' + qs.toString(), {}, 60000);
+    const d = await res.json();
+    if (d && d.ok && d.reply) reply = d.reply;
+    else if (d && d.error) reply = '⚠️ ' + d.error;
+    else if (d && d.allFailed) reply = '⚠️ All AI models failed: ' + (d.errors || []).slice(0,2).join(' · ');
+    else if (d && !d.ok && d.errors && d.errors.length) reply = '⚠️ ' + d.errors[0];
+  } catch (e) { reply = '⚠️ AI request failed: ' + e.message; }
+  think.classList.add('hidden');
+  const row = aiAppend('ai', reply);
+  if (row) { row.setAttribute('data-role','ai'); }
+}
+
   // Start app
-  document.addEventListener('DOMContentLoaded', init);
-</script>
+  document.addEventListener('DOMContentLoaded', init);</script>
 </body>
 </html>
