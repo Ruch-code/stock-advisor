@@ -556,6 +556,7 @@ export default async (event, context) => {
         _asOf: Date.now(),
         _freshCount: result.filter((r) => !r._held).length
       };
+      if (wantDebug) body.diag = diag.slice(0, 40);
       if (!body._stale) { cacheSet(qKey, body); staleSet(qKey, result); }
       return corsResponse(JSON.stringify(body), 200, { 'Cache-Control': 'public, max-age=15' });
     }
