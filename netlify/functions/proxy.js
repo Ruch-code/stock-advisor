@@ -66,9 +66,10 @@ function keyList(name) {
 // if the canonical symbol isn't addressable on that provider.
 function indexMap() {
   return {
-    '^NSEI':    { finnhub: 'NIFTY:INDEXNSE',    twelve: 'NIFTY:INDEXNSE',     alpha: 'NIFTY' },
-    '^BSESN':   { finnhub: 'SENSEX:INDEXBOM',   twelve: 'SENSEX:INDEXBOM',    alpha: 'SENSEX' },
-    '^NSEBANK': { finnhub: 'BANKNIFTY:INDEXNSE', twelve: 'BANKNIFTY:INDEXNSE', alpha: null }
+    '^NSEI':    { rapid: 'NIFTY 50',      finnhub: 'NIFTY:INDEXNSE',      twelve: 'NIFTY:INDEXNSE',      alpha: 'NIFTY' },
+    '^BSESN':   { rapid: 'SENSEX',        finnhub: 'SENSEX:INDEXBOM',     twelve: 'SENSEX:INDEXBOM',     alpha: 'SENSEX' },
+    '^NSEBANK': { rapid: 'NIFTY BANK',    finnhub: 'BANKNIFTY:INDEXNSE',  twelve: 'BANKNIFTY:INDEXNSE',  alpha: null },
+    '^INDIAVIX':{ rapid: 'INDIA VIX',     finnhub: null,                  twelve: null,                 alpha: null }
   };
 }
 
@@ -419,17 +420,71 @@ async function finnhubQuote(symbol, keys) {
   return null;
 }
 
+// RapidAPI — "Stock Data from Indian Market" (NSE-official feed via RapidAPI).
+// One /price call can return several indices at once; we just request the ones
+// we still need. Free tier includes NIFTY 50, SENSEX, NIFTY BANK and INDIA VIX.
+async function rapidQuote(symbols, keys) {
+  if (!keys.length || !symbols.length) return null;
+  const host = process.env.RAPIDAPI_HOST || 'latest-stock-price.p.rapidapi.com';
+  for (const key of keys) {
+    try {
+      const qs = symbols.map((s) => 'Indices=' + encodeURIComponent(s)).join('&');
+      const res = await fetch(`https://${host}/price?${qs}`, {
+        headers: {
+          'User-Agent': UA,
+          'X-RapidAPI-Key': key,
+          'X-RapidAPI-Host': host
+        }
+      });
+      if (!res.ok) continue;
+      const arr = await res.json().catch(() => null);
+      if (!Array.isArray(arr)) continue;
+      const out = [];
+      for (const it of arr) {
+        if (it == null || it.lastPrice == null) continue;
+        out.push({
+          symbol: it.symbol,
+          regularMarketPrice: parseFloat(it.lastPrice),
+          regularMarketChangePercent: it.pChange != null ? parseFloat(it.pChange) : null,
+          regularMarketPreviousClose: it.previousClose != null ? parseFloat(it.previousClose) : null,
+          regularMarketTime: Math.floor(Date.now() / 1000),
+          currency: 'INR', _srcName: 'RapidAPI'
+        });
+      }
+      if (out.length) return out;
+    } catch (e) { /* next key */ }
+  }
+  return null;
+}
+
 // Try every configured index provider (each across all its keys) for the symbols
 // still missing from the quote map. Converts successes into rows placed in `merged`.
 async function indexQuoteProviders(symbols, merged, put) {
   const idx = indexMap();
   const missing = symbols.filter((s) => (idx[s] && !merged.has(s)));
   if (!missing.length) return;
+  const rapidKeys = keyList('RAPIDAPI');
   const alphaKeys = keyList('ALPHAVANTAGE');
   const twelveKeys = keyList('TWELVEDATA');
   const finnhubKeys = keyList('FINNHUB');
-  if (!alphaKeys.length && !twelveKeys.length && !finnhubKeys.length) return;
+  if (!rapidKeys.length && !alphaKeys.length && !twelveKeys.length && !finnhubKeys.length) return;
+
+  // Layer A — RapidAPI batch (NSE-official, covers NIFTY/SENSEX/BANK/VIX in one call)
+  if (rapidKeys.length) {
+    const want = missing.map((s) => idx[s].rapid).filter(Boolean);
+    if (want.length) {
+      const rows = await rapidQuote(want, rapidKeys);
+      diag.push(`rapid ${want.join('|')}: ${rows ? rows.map((r) => r.symbol).join('|') : 'miss'}`);
+      if (rows) for (const r of rows) {
+        const canon = Object.keys(idx).find((s) => idx[s].rapid === r.symbol);
+        if (canon) put({ symbol: canon, ...r }, true, false, false, null);
+      }
+    }
+  }
+
+  // Layer B — single-symbol keyed providers for whatever is still missing
   for (const s of missing) {
+    if (merged.has(s)) continue;
     const p = idx[s];
     let row = alphaKeys.length && p.alpha ? await alphaVantageQuote(p.alpha, alphaKeys) : null;
     diag.push(`av ${p.alpha}: ${row ? 'ok' : 'miss'}`);
@@ -512,15 +567,16 @@ export default async (event, context) => {
       merged.set(row.symbol, { ...row, _live: live, _delayed: delayed, _held: held, _asOf: asOf });
     };
 
-    // Layer 1 — Trading Economics (DC-friendly headline indices, always-on when Yahoo throttles)
+    // Layer 1 — keyed API providers (each across all configured keys): RapidAPI
+    // (NSE-official batch), then Alpha Vantage, Twelve Data, Finnhub. Chosen first
+    // so NSE-official numbers win over the aggregator when a key exists.
+    await indexQuoteProviders(symbols, merged, put);
+
+    // Layer 2 — Trading Economics (DC-friendly headline indices, no key required)
     try {
       const te = await tradesEconomicsQuotes();
       if (te) te.forEach((r) => put(r, true, false, false, null));
     } catch (e) { diag.push(`te error: ${e.message}`); }
-
-    // Layer 2 — funded API providers (each across all configured keys): Alpha Vantage,
-    // then Twelve Data, then Finnhub — whichever can serve the still-missing symbols.
-    await indexQuoteProviders(symbols, merged, put);
 
     // Layer 3 — Yahoo v7 batch (all four, exact LTP; needs cookie+crumb)
     try {
@@ -546,12 +602,10 @@ export default async (event, context) => {
 
     const result = [...merged.values()];
     if (result.length) {
-      const anyHeld = result.some((r) => r._held);
-      const anyYahoo = result.some((r) => r._srcName === 'Yahoo');
-      const anyTE = result.some((r) => r._srcName === 'TradingEconomics');
+      const srcSet = [...new Set(result.map((r) => r._srcName).filter(Boolean))];
       const body = {
         quoteResponse: { result },
-        _src: anyYahoo ? (anyTE ? 'yahoo+te' : 'yahoo') : (anyTE ? 'te' : 'chart'),
+        _src: srcSet.length ? srcSet.join('+') : 'chart',
         _stale: result.every((r) => r._held),
         _asOf: Date.now(),
         _freshCount: result.filter((r) => !r._held).length
