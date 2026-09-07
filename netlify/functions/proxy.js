@@ -66,9 +66,9 @@ function keyList(name) {
 // if the canonical symbol isn't addressable on that provider.
 function indexMap() {
   return {
-    '^NSEI':    { finnhub: '^NSEI',  twelve: 'NIFTY:INDEXNSE',   alpha: 'NIFTY' },
-    '^BSESN':   { finnhub: '^BSESN', twelve: 'SENSEX:INDEXBOM',  alpha: 'SENSEX' },
-    '^NSEBANK': { finnhub: '^NSEBANK', twelve: 'BANKNIFTY:INDEXNSE', alpha: null }
+    '^NSEI':    { finnhub: 'NIFTY:INDEXNSE',    twelve: 'NIFTY:INDEXNSE',     alpha: 'NIFTY' },
+    '^BSESN':   { finnhub: 'SENSEX:INDEXBOM',   twelve: 'SENSEX:INDEXBOM',    alpha: 'SENSEX' },
+    '^NSEBANK': { finnhub: 'BANKNIFTY:INDEXNSE', twelve: 'BANKNIFTY:INDEXNSE', alpha: null }
   };
 }
 
