@@ -520,7 +520,12 @@ async function explainChat(keys, body) {
     max_tokens: maxTokens
   };
   const errors = [];
-  for (const key of keys) {
+  const modelOrder = Object.keys(EXPLABS_MODELS);
+  const idx = modelOrder.indexOf(model);
+  // Prefer the key that matches this model's position (each user key is
+  // per-model), then fall back to the remaining keys in order.
+  const ordered = idx >= 0 && keys[idx] ? [keys[idx], ...keys.slice(0, idx), ...keys.slice(idx + 1)] : keys;
+  for (const key of ordered) {
     try {
       const res = await fetch(EXPLABS_BASE + '/chat/completions', {
         method: 'POST',
