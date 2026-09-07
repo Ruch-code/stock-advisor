@@ -49,6 +49,29 @@ const NEWS_CURATED = {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Multi-key support: read FINNHUB_API_KEY, FINNHUB_API_KEY_2, FINNHUB_API_KEY_3, ...
+// (and accept comma- or space-separated lists) so rate-limited/exhausted keys roll
+// over to the next instead of killing the feed. Absent any key -> empty list.
+function keyList(name) {
+  const parts = [];
+  for (let i = 1; i <= 8; i++) {
+    const k = process.env[`${name}_API_KEY${i === 1 ? '' : '_' + i}`];
+    if (k) parts.push(...k.split(/[,\s]+/).filter(Boolean));
+  }
+  return parts;
+}
+
+// Normalise Indian index tickers to the canonical symbols each provider understands.
+// Returns a map of { providerSymbol } for every canonical symbol we track, or null
+// if the canonical symbol isn't addressable on that provider.
+function indexMap() {
+  return {
+    '^NSEI':    { finnhub: '^NSEI',  twelve: 'NIFTY:INDEXNSE',   alpha: 'NIFTY' },
+    '^BSESN':   { finnhub: '^BSESN', twelve: 'SENSEX:INDEXBOM',  alpha: 'SENSEX' },
+    '^NSEBANK': { finnhub: '^NSEBANK', twelve: 'BANKNIFTY:INDEXNSE', alpha: null }
+  };
+}
+
 // Server-side response cache (per warm instance) so alert polling every 20s doesn't
 // hammer free-tier providers; 60s TTL is plenty for quotes.
 const serverCache = new Map();
@@ -73,76 +96,86 @@ const landmark = (obj) => ({
 });
 
 async function finnhubChart(symbol, interval, range) {
-  const key = process.env.FINNHUB_API_KEY;
-  if (!key) return null;
+  const keys = keyList('FINNHUB');
+  if (!keys.length) return null;
 
   const days = RANGE_DAYS[range] || 5;
   const extra = interval === '1d' ? 0 : 30; // buffer so ~5d holds 35 bars
   const to = Math.floor(Date.now() / 1000);
   const from = to - (days + extra) * 86400;
 
-  const url = `${FINNHUB}?symbol=${encodeURIComponent(symbol)}&resolution=D&from=${from}&to=${to}&token=${key}`;
-  const res = await fetch(url, { headers: { 'User-Agent': UA } });
-  if (!res.ok) return null;
-  const data = await res.json().catch(() => null);
-  if (!data || data.s !== 'ok' || !Array.isArray(data.t) || data.t.length === 0) return null;
+  for (const key of keys) {
+    try {
+      const url = `${FINNHUB}?symbol=${encodeURIComponent(symbol)}&resolution=D&from=${from}&to=${to}&token=${key}`;
+      const res = await fetch(url, { headers: { 'User-Agent': UA } });
+      if (!res.ok) continue;
+      const data = await res.json().catch(() => null);
+      if (!data || data.s !== 'ok' || !Array.isArray(data.t) || data.t.length === 0) continue;
 
-  const closes = data.c, opens = data.o, highs = data.h, lows = data.l, vols = data.v;
-  return landmark({
-    meta: {
-      symbol: (symbol || '').toUpperCase(),
-      regularMarketPrice: closes[closes.length - 1],
-      regularMarketTime: data.t[data.t.length - 1],
-      regularMarketPreviousClose: closes.length > 1 ? closes[closes.length - 2] : closes[0],
-      currency: symbol.includes('.NS') ? 'INR' : 'USD',
-      longName: symbol
-    },
-    timestamp: data.t,
-    indicators: { quote: [{ open: opens, high: highs, low: lows, close: closes, volume: vols }] }
-  });
+      const closes = data.c, opens = data.o, highs = data.h, lows = data.l, vols = data.v;
+      return landmark({
+        meta: {
+          symbol: (symbol || '').toUpperCase(),
+          regularMarketPrice: closes[closes.length - 1],
+          regularMarketTime: data.t[data.t.length - 1],
+          regularMarketPreviousClose: closes.length > 1 ? closes[closes.length - 2] : closes[0],
+          currency: symbol.includes('.NS') ? 'INR' : 'USD',
+          longName: symbol
+        },
+        timestamp: data.t,
+        indicators: { quote: [{ open: opens, high: highs, low: lows, close: closes, volume: vols }] }
+      });
+    } catch (e) { /* next key */ }
+  }
+  return null;
 }
 
 async function twelveChart(symbol, interval, range, exchange = null) {
-  const key = process.env.TWELVEDATA_API_KEY;
-  if (!key) return null;
+  const keys = keyList('TWELVEDATA');
+  if (!keys.length) return null;
 
   const days = RANGE_DAYS[range] || 5;
   const output = days + 35;
   const isDailyish = (interval === '1d') || /^(1m|2m|5m|15m|30m|60m|1h)$/.test(interval);
   const tdInterval = isDailyish ? '1day' : '1day';
 
-  let url = `${TWELVE}?symbol=${encodeURIComponent(symbol)}&interval=${tdInterval}&outputsize=${output}&timezone=UTC&apikey=${key}`;
-  if (exchange) url += `&exchange=${exchange}`;
+  for (const key of keys) {
+    try {
+      let url = `${TWELVE}?symbol=${encodeURIComponent(symbol)}&interval=${tdInterval}&outputsize=${output}&timezone=UTC&apikey=${key}`;
+      if (exchange) url += `&exchange=${exchange}`;
 
-  const res = await fetch(url, { headers: { 'User-Agent': UA } });
-  if (!res.ok) return null;
-  const d = await res.json().catch(() => null);
-  if (!d || !Array.isArray(d.values) || d.values.length === 0 || d.status === 'error') return null;
+      const res = await fetch(url, { headers: { 'User-Agent': UA } });
+      if (!res.ok) continue;
+      const d = await res.json().catch(() => null);
+      if (!d || !Array.isArray(d.values) || d.values.length === 0 || d.status === 'error') continue;
 
-  const values = [...d.values].reverse(); // newest-first -> oldest-first
-  const ts = [], opens = [], highs = [], lows = [], closes = [], vols = [];
-  for (const row of values) {
-    const t = Math.floor(Date.parse(`${row.datetime}T00:00:00Z`) / 1000);
-    if (isNaN(t)) continue;
-    ts.push(t);
-    opens.push(parseFloat(row.open)); highs.push(parseFloat(row.high));
-    lows.push(parseFloat(row.low)); closes.push(parseFloat(row.close));
-    vols.push(row.volume ? parseInt(row.volume, 10) : 0);
+      const values = [...d.values].reverse(); // newest-first -> oldest-first
+      const ts = [], opens = [], highs = [], lows = [], closes = [], vols = [];
+      for (const row of values) {
+        const t = Math.floor(Date.parse(`${row.datetime}T00:00:00Z`) / 1000);
+        if (isNaN(t)) continue;
+        ts.push(t);
+        opens.push(parseFloat(row.open)); highs.push(parseFloat(row.high));
+        lows.push(parseFloat(row.low)); closes.push(parseFloat(row.close));
+        vols.push(row.volume ? parseInt(row.volume, 10) : 0);
+      }
+      if (ts.length === 0) continue;
+
+      return landmark({
+        meta: {
+          symbol: (exchange ? `${symbol}.${exchange}` : symbol).toUpperCase(),
+          regularMarketPrice: closes[closes.length - 1],
+          regularMarketTime: ts[ts.length - 1],
+          regularMarketPreviousClose: closes.length > 1 ? closes[closes.length - 2] : closes[0],
+          currency: exchange ? 'INR' : (d.meta && (d.meta.currency || 'USD')) || 'USD',
+          longName: symbol
+        },
+        timestamp: ts,
+        indicators: { quote: [{ open: opens, high: highs, low: lows, close: closes, volume: vols }] }
+      });
+    } catch (e) { /* next key */ }
   }
-  if (ts.length === 0) return null;
-
-  return landmark({
-    meta: {
-      symbol: (exchange ? `${symbol}.${exchange}` : symbol).toUpperCase(),
-      regularMarketPrice: closes[closes.length - 1],
-      regularMarketTime: ts[ts.length - 1],
-      regularMarketPreviousClose: closes.length > 1 ? closes[closes.length - 2] : closes[0],
-      currency: exchange ? 'INR' : (d.meta && (d.meta.currency || 'USD')) || 'USD',
-      longName: symbol
-    },
-    timestamp: ts,
-    indicators: { quote: [{ open: opens, high: highs, low: lows, close: closes, volume: vols }] }
-  });
+  return null;
 }
 
 let ySession = { cookie: null, crumb: null, at: 0 };
@@ -307,6 +340,105 @@ async function yahooQuoteFromCharts(symbols) {
   return rows.length ? rows : null;
 }
 
+// ---------------------------------------------------------------------------
+// Indian-index quote providers with multi-key + multi-provider fallback.
+// Each returns a section of a Yahoo-style quoteResponse row, or null if it can't
+// serve this symbol right now (no key, blocked, rate-limited, invalid).
+// The merge layer below tries TE → Alpha Vantage → Twelve Data → Finnhub → Yahoo.
+// ---------------------------------------------------------------------------
+
+async function alphaVantageQuote(symbol, keys) {
+  if (!keys.length) return null;
+  for (const key of keys) {
+    try {
+      const url = 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=' +
+        encodeURIComponent(symbol) + '&apikey=' + encodeURIComponent(key);
+      const res = await fetch(url, { headers: { 'User-Agent': UA } });
+      if (!res.ok) continue;
+      const d = await res.json().catch(() => null);
+      const g = d && d['Global Quote'];
+      const pr = g && g['05. price'];
+      if (pr != null) {
+        return {
+          regularMarketPrice: parseFloat(pr),
+          regularMarketChangePercent: g['10. change percent'] != null ? parseFloat(String(g['10. change percent']).replace('%', '')) : null,
+          regularMarketPreviousClose: g['08. previous close'] != null ? parseFloat(g['08. previous close']) : null,
+          regularMarketTime: Math.floor(Date.now() / 1000),
+          currency: 'INR', _srcName: 'AlphaVantage'
+        };
+      }
+    } catch (e) { /* try next key/provider */ }
+  }
+  return null;
+}
+
+async function twelveQuote(symbol, keys) {
+  if (!keys.length) return null;
+  for (const key of keys) {
+    try {
+      const url = 'https://api.twelvedata.com/quote?symbol=' + encodeURIComponent(symbol) +
+        '&apikey=' + encodeURIComponent(key);
+      const res = await fetch(url, { headers: { 'User-Agent': UA } });
+      if (!res.ok) continue;
+      const d = await res.json().catch(() => null);
+      if (!d || d.status === 'error') continue;
+      const pr = parseFloat(d.close);
+      if (isNaN(pr)) continue;
+      const ph = parseFloat(d.previous_close);
+      return {
+        regularMarketPrice: pr,
+        regularMarketChangePercent: !isNaN(ph) && ph ? ((pr / ph) - 1) * 100 : null,
+        regularMarketPreviousClose: isNaN(ph) ? null : ph,
+        regularMarketTime: Math.floor(Date.parse(d.datetime || new Date().toISOString()) / 1000) || Math.floor(Date.now() / 1000),
+        currency: 'INR', _srcName: 'TwelveData'
+      };
+    } catch (e) { /* next */ }
+  }
+  return null;
+}
+
+async function finnhubQuote(symbol, keys) {
+  if (!keys.length) return null;
+  for (const key of keys) {
+    try {
+      const url = 'https://finnhub.io/api/v1/quote?symbol=' + encodeURIComponent(symbol) +
+        '&token=' + encodeURIComponent(key);
+      const res = await fetch(url, { headers: { 'User-Agent': UA } });
+      if (!res.ok) continue;
+      const d = await res.json().catch(() => null);
+      if (!d || d.c == null || d.c === 0) continue;
+      return {
+        regularMarketPrice: d.c,
+        regularMarketChangePercent: d.dp != null ? d.dp : (d.pc ? ((d.c / d.pc) - 1) * 100 : null),
+        regularMarketPreviousClose: d.pc != null ? d.pc : null,
+        regularMarketTime: Math.floor(Date.now() / 1000),
+        currency: 'INR', _srcName: 'Finnhub'
+      };
+    } catch (e) { /* next */ }
+  }
+  return null;
+}
+
+// Try every configured index provider (each across all its keys) for the symbols
+// still missing from the quote map. Converts successes into rows placed in `merged`.
+async function indexQuoteProviders(symbols, merged, put) {
+  const idx = indexMap();
+  const missing = symbols.filter((s) => (idx[s] && !merged.has(s)));
+  if (!missing.length) return;
+  const alphaKeys = keyList('ALPHAVANTAGE');
+  const twelveKeys = keyList('TWELVEDATA');
+  const finnhubKeys = keyList('FINNHUB');
+  if (!alphaKeys.length && !twelveKeys.length && !finnhubKeys.length) return;
+  for (const s of missing) {
+    const p = idx[s];
+    let row = alphaKeys.length && p.alpha ? await alphaVantageQuote(p.alpha, alphaKeys) : null;
+    diag.push(`av ${p.alpha}: ${row ? 'ok' : 'miss'}`);
+    if (!row) row = twelveKeys.length && p.twelve ? await twelveQuote(p.twelve, twelveKeys) : null;
+    if (!row) row = finnhubKeys.length && p.finnhub ? await finnhubQuote(p.finnhub, finnhubKeys) : null;
+    if (row) put({ symbol: s, ...row }, true, false, false, null);
+  }
+}
+
 // Trading Economics — India markets page contains NIFTY 50 + SENSEX quotes rendered
 // server-side. Serves as a DC-IP-friendly "always-on" layer while Yahoo throttles us:
 // one HTML fetch, parsed for label → price + % change. (No key, no CORS issues.)
@@ -386,20 +518,24 @@ export default async (event, context) => {
       if (te) te.forEach((r) => put(r, true, false, false, null));
     } catch (e) { diag.push(`te error: ${e.message}`); }
 
-    // Layer 2 — Yahoo v7 batch (all four, exact LTP; needs cookie+crumb)
+    // Layer 2 — funded API providers (each across all configured keys): Alpha Vantage,
+    // then Twelve Data, then Finnhub — whichever can serve the still-missing symbols.
+    await indexQuoteProviders(symbols, merged, put);
+
+    // Layer 3 — Yahoo v7 batch (all four, exact LTP; needs cookie+crumb)
     try {
       const y = await yahooQuoteBatch(symbols);
       if (y) y.forEach((r) => put(r, true, false, false, null));
     } catch (e) { diag.push(`quote batch error: ${e.message}`); }
 
-    // Layer 3 — v8 chart fills for whatever is still missing (delayed, last close)
+    // Layer 4 — v8 chart fills for whatever is still missing (delayed, last close)
     const needChart = symbols.filter((s) => !merged.has(s));
     if (needChart.length) {
       const c = await yahooQuoteFromCharts(needChart);
       if (c) c.forEach((r) => put(r, false, true, false, null));
     }
 
-    // Layer 4 — held last-known-good values for anything still missing (never a dead tile)
+    // Layer 5 — held last-known-good values for anything still missing (never a dead tile)
     const needHeld = symbols.filter((s) => !merged.has(s));
     if (needHeld.length) {
       const st = staleGet(qKey);
