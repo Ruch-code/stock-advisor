@@ -457,34 +457,35 @@ async function rapidQuote(symbols, keys) {
   return null;
 }
 
-// Try every configured index provider (each across all its keys) for the symbols
-// still missing from the quote map. Converts successes into rows placed in `merged`.
-async function indexQuoteProviders(symbols, merged, put) {
+// RapidAPI batch (NSE-official, covers all four tickers in one call) for every
+// index symbol still missing from the quote map.
+async function rapidIndexQuotes(symbols, merged, put) {
+  const idx = indexMap();
+  const missing = symbols.filter((s) => (idx[s] && !merged.has(s)));
+  const rapidKeys = keyList('RAPIDAPI');
+  if (!rapidKeys.length || !missing.length) return;
+  const want = missing.map((s) => idx[s].rapid).filter(Boolean);
+  if (!want.length) return;
+  const rows = await rapidQuote(want, rapidKeys);
+  diag.push(`rapid ${want.join('|')}: ${rows ? rows.map((r) => r.symbol).join('|') : 'miss'}`);
+  if (!rows) return;
+  for (const r of rows) {
+    const canon = Object.keys(idx).find((s) => idx[s].rapid === r.symbol);
+    if (canon) put({ symbol: canon, ...r }, true, false, false, null);
+  }
+}
+
+// Single-symbol keyed providers (each across all its keys) for anything still
+// missing — Alpha Vantage, then Twelve Data, then Finnhub.
+async function keyedIndexQuotes(symbols, merged, put) {
   const idx = indexMap();
   const missing = symbols.filter((s) => (idx[s] && !merged.has(s)));
   if (!missing.length) return;
-  const rapidKeys = keyList('RAPIDAPI');
   const alphaKeys = keyList('ALPHAVANTAGE');
   const twelveKeys = keyList('TWELVEDATA');
   const finnhubKeys = keyList('FINNHUB');
-  if (!rapidKeys.length && !alphaKeys.length && !twelveKeys.length && !finnhubKeys.length) return;
-
-  // Layer A — RapidAPI batch (NSE-official, covers NIFTY/SENSEX/BANK/VIX in one call)
-  if (rapidKeys.length) {
-    const want = missing.map((s) => idx[s].rapid).filter(Boolean);
-    if (want.length) {
-      const rows = await rapidQuote(want, rapidKeys);
-      diag.push(`rapid ${want.join('|')}: ${rows ? rows.map((r) => r.symbol).join('|') : 'miss'}`);
-      if (rows) for (const r of rows) {
-        const canon = Object.keys(idx).find((s) => idx[s].rapid === r.symbol);
-        if (canon) put({ symbol: canon, ...r }, true, false, false, null);
-      }
-    }
-  }
-
-  // Layer B — single-symbol keyed providers for whatever is still missing
+  if (!alphaKeys.length && !twelveKeys.length && !finnhubKeys.length) return;
   for (const s of missing) {
-    if (merged.has(s)) continue;
     const p = idx[s];
     let row = alphaKeys.length && p.alpha ? await alphaVantageQuote(p.alpha, alphaKeys) : null;
     diag.push(`av ${p.alpha}: ${row ? 'ok' : 'miss'}`);
@@ -567,10 +568,9 @@ export default async (event, context) => {
       merged.set(row.symbol, { ...row, _live: live, _delayed: delayed, _held: held, _asOf: asOf });
     };
 
-    // Layer 1 — keyed API providers (each across all configured keys): RapidAPI
-    // (NSE-official batch), then Alpha Vantage, Twelve Data, Finnhub. Chosen first
-    // so NSE-official numbers win over the aggregator when a key exists.
-    await indexQuoteProviders(symbols, merged, put);
+    // Layer 1 — RapidAPI batch (NSE-official; covers all four indices in ONE call
+    // when a key exists). Voted first so official numbers beat aggregators.
+    await rapidIndexQuotes(symbols, merged, put);
 
     // Layer 2 — Trading Economics (DC-friendly headline indices, no key required)
     try {
@@ -578,20 +578,24 @@ export default async (event, context) => {
       if (te) te.forEach((r) => put(r, true, false, false, null));
     } catch (e) { diag.push(`te error: ${e.message}`); }
 
-    // Layer 3 — Yahoo v7 batch (all four, exact LTP; needs cookie+crumb)
+    // Layer 3 — Alpha Vantage / Twelve Data / Finnhub for whatever keyed providers
+    // still don't cover (each across all its keys).
+    await keyedIndexQuotes(symbols, merged, put);
+
+    // Layer 4 — Yahoo v7 batch (all four, exact LTP; needs cookie+crumb)
     try {
       const y = await yahooQuoteBatch(symbols);
       if (y) y.forEach((r) => put(r, true, false, false, null));
     } catch (e) { diag.push(`quote batch error: ${e.message}`); }
 
-    // Layer 4 — v8 chart fills for whatever is still missing (delayed, last close)
+    // Layer 5 — v8 chart fills for whatever is still missing (delayed, last close)
     const needChart = symbols.filter((s) => !merged.has(s));
     if (needChart.length) {
       const c = await yahooQuoteFromCharts(needChart);
       if (c) c.forEach((r) => put(r, false, true, false, null));
     }
 
-    // Layer 5 — held last-known-good values for anything still missing (never a dead tile)
+    // Layer 6 — held last-known-good values for anything still missing (never a dead tile)
     const needHeld = symbols.filter((s) => !merged.has(s));
     if (needHeld.length) {
       const st = staleGet(qKey);
