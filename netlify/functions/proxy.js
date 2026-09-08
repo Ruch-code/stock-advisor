@@ -373,6 +373,55 @@ async function alphaVantageQuote(symbol, keys) {
   return null;
 }
 
+// Alpha Vantage daily candles (TIME_SERIES_DAILY). Free tier = 25 req/day but
+// reliably serves BOTH US symbols and Indian equities (RELIANCE.BSE) from a
+// server IP — the missing NSE/BSE candle source for the Invest Watchlist.
+// Uses compact output (~100 bars) by default to conserve the tight free quota.
+async function alphaChart(symbol, interval, range) {
+  const keys = keyList('ALPHAVANTAGE');
+  if (!keys.length) return null;
+  const avSym = isIndia(symbol) ? indiaBase(symbol) + '.BSE' : symbol;
+  const outputsize = /^(1y|2y|5y|max)$/.test(range) ? 'full' : 'compact';
+  for (const key of keys) {
+    try {
+      const url = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=' +
+        encodeURIComponent(avSym) + '&outputsize=' + outputsize + '&apikey=' + encodeURIComponent(key);
+      const res = await fetch(url, { headers: { 'User-Agent': UA } });
+      if (!res.ok) continue;
+      const d = await res.json().catch(() => null);
+      if (!d || d['Information'] || d['Error Message'] || !d['Time Series (Daily)']) continue;
+      const days = Object.entries(d['Time Series (Daily)'])
+        .map(([date, v]) => ({ date, ...v }))
+        .sort((a, b) => (a.date < b.date ? -1 : 1));
+      const ts = [], opens = [], highs = [], lows = [], closes = [], vols = [];
+      for (const row of days) {
+        const t = Math.floor(Date.parse(row.date + 'T00:00:00Z') / 1000);
+        if (isNaN(t)) continue;
+        ts.push(t);
+        opens.push(parseFloat(row['1. open']));
+        highs.push(parseFloat(row['2. high']));
+        lows.push(parseFloat(row['3. low']));
+        closes.push(parseFloat(row['4. close']));
+        vols.push(row['6. volume'] ? parseInt(row['6. volume'], 10) : 0);
+      }
+      if (ts.length === 0) continue;
+      return landmark({
+        meta: {
+          symbol: symbol.toUpperCase(),
+          regularMarketPrice: closes[closes.length - 1],
+          regularMarketTime: ts[ts.length - 1],
+          regularMarketPreviousClose: closes.length > 1 ? closes[closes.length - 2] : closes[0],
+          currency: isIndia(symbol) ? 'INR' : 'USD',
+          longName: symbol
+        },
+        timestamp: ts,
+        indicators: { quote: [{ open: opens, high: highs, low: lows, close: closes, volume: vols }] }
+      });
+    } catch (e) { /* next key */ }
+  }
+  return null;
+}
+
 async function twelveQuote(symbol, keys) {
   if (!keys.length) return null;
   for (const key of keys) {
@@ -724,21 +773,24 @@ export default async (event, context) => {
   const wantDebug = params.debug === '1';
   diag = [];
 
-  // INR / NSE / BSE symbols -> Finnhub .NS first, TwelveData (NSE/BSE) second
+  // INR / NSE / BSE symbols -> Finnhub .NS first, TwelveData (NSE/BSE) second,
+  // Alpha Vantage (.BSE) third — the dedicated Indian-equity candle source.
   if (isIndia(symbol)) {
     if (process.env.FINNHUB_API_KEY) out = await finnhubChart(symbol, interval, range);
     if (!out && process.env.TWELVEDATA_API_KEY) {
       out = await twelveChart(indiaBase(symbol), interval, range, indiaExchange(symbol));
     }
+    if (!out) out = await alphaChart(symbol, interval, range);
   }
 
-  // USD / US symbols -> Finnhub first, Twelve Data as secondary
+  // USD / US symbols -> Finnhub first, Twelve Data as secondary, Alpha Vantage last.
   if (!out && process.env.FINNHUB_API_KEY) {
     out = await finnhubChart(symbol, interval, range);
   }
   if (!out && process.env.TWELVEDATA_API_KEY) {
     out = await twelveChart(symbol, interval, range);
   }
+  if (!out) out = await alphaChart(symbol, interval, range);
 
   if (out) {
     cacheSet(cacheKey, out);
