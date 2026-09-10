@@ -700,6 +700,8 @@
 
   <!-- Main Layout -->
   <div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+    <div class="min-w-0">
     <!-- Top Bar: Girl Illustration + Market Status -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
       <!-- Girl with Purple Hoodie - CSS Illustration -->
@@ -897,31 +899,6 @@
 
     <!-- Dashboard Section -->
     <div id="section-dashboard" class="section">
-      <!-- Invest Watchlist: candlestick + pattern meaning on hover -->
-      <div class="card rounded-2xl p-5 mb-6 glow-border">
-        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-          <h2 class="text-base font-bold silver-text flex items-center gap-2">
-            📊 Invest Watchlist
-            <span class="text-[10px] font-bold px-2 py-1 rounded bg-purple-glow/15 text-purple-light" id="watchCount">0 / 3</span>
-          </h2>
-          <span class="text-[10px] text-keyboard-silver/45">Up to 3 stocks to buy · hover any candle to read its pattern &amp; buy/sell/hold signal</span>
-        </div>
-        <form id="watchForm" class="flex flex-wrap items-center gap-2 mb-2" onsubmit="event.preventDefault(); addWatchSymbols(document.getElementById('watchInput').value);">
-          <input id="watchInput" list="watchDatalist" placeholder="e.g. Reliance, TCS, HDFCBANK (comma-separated)" autocomplete="off"
-                 class="bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none flex-1 min-w-[220px]"/>
-          <datalist id="watchDatalist"></datalist>
-          <button type="submit" class="key-press px-4 py-2 rounded-lg bg-purple-glow/20 text-purple-light text-xs font-semibold leading-5 hover:bg-purple-glow/35 transition-colors">⚡ Analyse</button>
-          <button type="button" onclick="clearWatchlist()" class="key-press px-3 py-2 rounded-lg bg-keyboard-grey/40 text-keyboard-silver/70 text-xs hover:bg-keyboard-grey/60 transition-colors">Clear</button>
-        </form>
-        <div id="watchChips" class="flex flex-wrap gap-1.5 mb-1 items-center"></div>
-        <p id="watchNote" class="hidden text-[10px] text-yellow-400/80 mb-1"></p>
-        <div id="watchEmpty" class="text-center py-8">
-          <p class="text-3xl mb-2">🔍</p>
-          <p class="text-sm font-semibold text-keyboard-silver/80 mb-1">No stocks watched yet</p>
-          <p class="text-xs text-keyboard-silver/50 max-w-md mx-auto">Type the names of up to 3 stocks you plan to buy — Reliance, TCS, HDFCBANK… A live candlestick chart with pattern call-outs will appear for each. <b class="text-purple-light">Hover a candle</b> to see the pattern and what it means for buy / sell / hold.</p>
-        </div>
-        <div id="watchCards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
-      </div>
       <!-- Feature Roadmap / To-Dos -->
       <div class="card rounded-2xl p-5 mb-6 glow-border" data-tilt="3">
         <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
@@ -1021,29 +998,6 @@
           </div>
           <div id="topFundamentals" class="space-y-1"></div>
         </div>
-      </div>
-
-      <!-- Price Alerts -->
-      <div class="card rounded-2xl p-6 mt-6 alert-flash" id="alertsPanel">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-sm font-semibold silver-text flex items-center gap-2">
-            <svg class="w-4 h-4 text-purple-light" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-            Price Alerts
-          </h3>
-          <span class="text-[10px] text-keyboard-silver/50">Saved in your browser</span>
-        </div>
-        <div class="flex flex-wrap gap-2 mb-4">
-          <input id="alertSymbol" placeholder="SYMBOL (e.g. AAPL)" class="bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none w-28 uppercase" maxlength="12">
-          <input id="alertPrice" type="number" step="any" placeholder="Target price" class="bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none w-32">
-          <select id="alertDirection" class="bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none">
-            <option value="above">Price goes ABOVE</option>
-            <option value="below">Price goes BELOW</option>
-          </select>
-          <button onclick="addAlert()" class="key-press px-4 py-2 rounded-lg bg-purple-glow/20 text-purple-light text-xs font-semibold hover:bg-purple-glow/35 transition-colors">+ Add Alert</button>
-        </div>
-        <div id="alertsList" class="space-y-2"></div>
-        <p id="alertsEmpty" class="text-xs text-keyboard-silver/40 text-center py-2">No alerts yet. Add one above to get notified when a price crosses your target.</p>
-        <p class="text-[10px] text-keyboard-silver/30 mt-2">Alerts check live prices every 20 seconds. Triggered alerts also ring a chime.</p>
       </div>
     </div>
 
@@ -1457,6 +1411,60 @@
         </div>
       </div>
     </div>
+    </div>
+    </div>
+    <!-- End main column -->
+
+    <!-- Persistent right rail: Invest Watchlist + Price Alerts (shown on every section) -->
+    <aside id="utilityRail" class="min-w-0 self-start lg:sticky lg:top-24 space-y-5">
+      <div class="card rounded-2xl p-5 glow-border">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <h2 class="text-base font-bold silver-text flex items-center gap-2">
+            📊 Invest Watchlist
+            <span class="text-[10px] font-bold px-2 py-1 rounded bg-purple-glow/15 text-purple-light" id="watchCount">0 / 3</span>
+          </h2>
+          <span class="text-[10px] text-keyboard-silver/45">Up to 3 stocks to buy · hover any candle to read its pattern &amp; buy/sell/hold signal</span>
+        </div>
+        <form id="watchForm" class="flex flex-wrap items-center gap-2 mb-2" onsubmit="event.preventDefault(); addWatchSymbols(document.getElementById('watchInput').value);">
+          <input id="watchInput" list="watchDatalist" placeholder="e.g. Reliance, TCS, HDFCBANK (comma-separated)" autocomplete="off"
+                 class="bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none flex-1 min-w-[160px]"/>
+          <datalist id="watchDatalist"></datalist>
+          <button type="submit" class="key-press px-4 py-2 rounded-lg bg-purple-glow/20 text-purple-light text-xs font-semibold leading-5 hover:bg-purple-glow/35 transition-colors">⚡ Analyse</button>
+          <button type="button" onclick="clearWatchlist()" class="key-press px-3 py-2 rounded-lg bg-keyboard-grey/40 text-keyboard-silver/70 text-xs hover:bg-keyboard-grey/60 transition-colors">Clear</button>
+        </form>
+        <div id="watchChips" class="flex flex-wrap gap-1.5 mb-1 items-center"></div>
+        <p id="watchNote" class="hidden text-[10px] text-yellow-400/80 mb-1"></p>
+        <div id="watchEmpty" class="text-center py-6">
+          <p class="text-3xl mb-2">🔍</p>
+          <p class="text-sm font-semibold text-keyboard-silver/80 mb-1">No stocks watched yet</p>
+          <p class="text-xs text-keyboard-silver/50 max-w-md mx-auto">Type the names of up to 3 stocks you plan to buy — Reliance, TCS, HDFCBANK… A live candlestick chart with pattern call-outs will appear for each. <b class="text-purple-light">Hover a candle</b> to see the pattern and what it means for buy / sell / hold.</p>
+        </div>
+        <div id="watchCards" class="grid grid-cols-1 gap-3"></div>
+      </div>
+
+      <!-- Price Alerts -->
+      <div class="card rounded-2xl p-4 alert-flash" id="alertsPanel">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold silver-text flex items-center gap-2">
+            <svg class="w-4 h-4 text-purple-light" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            Price Alerts
+          </h3>
+          <span class="text-[10px] text-keyboard-silver/50">Saved in your browser</span>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-3">
+          <input id="alertSymbol" placeholder="SYMBOL (e.g. AAPL)" class="bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none w-28 uppercase" maxlength="12">
+          <input id="alertPrice" type="number" step="any" placeholder="Target price" class="bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none w-32">
+          <select id="alertDirection" class="bg-keyboard-black/70 text-keyboard-light text-xs rounded-lg px-3 py-2 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none">
+            <option value="above">Price goes ABOVE</option>
+            <option value="below">Price goes BELOW</option>
+          </select>
+          <button onclick="addAlert()" class="key-press px-4 py-2 rounded-lg bg-purple-glow/20 text-purple-light text-xs font-semibold hover:bg-purple-glow/35 transition-colors">+ Add Alert</button>
+        </div>
+        <div id="alertsList" class="space-y-2"></div>
+        <p id="alertsEmpty" class="text-xs text-keyboard-silver/40 text-center py-2">No alerts yet. Add one above to get notified when a price crosses your target.</p>
+        <p class="text-[10px] text-keyboard-silver/30">Alerts check live prices every 20 seconds. Triggered alerts also ring a chime.</p>
+      </div>
+    </aside>
 
 <!-- Stock Signal Chart Modal -->
   <div id="ssModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -2644,9 +2652,12 @@ function showSection(name) {
     activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
   }
 
+  // Render persistent right rail (watchlist + alerts) on every section
+  renderAlerts();
+  renderWatchlistPanel();
   // Load section data (only the active one; lazy, so the page stays light)
   try {
-    if (name === 'dashboard') { renderQuickPicks(); renderAlerts(); loadChartData(); renderWatchlistPanel(); }
+    if (name === 'dashboard') { renderQuickPicks(); loadChartData(); }
     if (name === 'oversold') renderOversold(state.market === 'US' ? STOCKS.US.oversold : STOCKS.India.oversold);
     if (name === 'trending') renderTrending(state.market === 'US' ? STOCKS.US.trending : STOCKS.India.trending);
     if (name === 'signals') loadStockSignals();
