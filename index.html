@@ -533,6 +533,13 @@
     #topNav .dropdown:last-child .dd-panel { left: auto; right: 0; transform-origin: top right; transform: rotateX(-10deg) translateY(-8px) scale(0.98); }
     #topNav .dropdown:last-child:hover .dd-panel, #topNav .dropdown:last-child.open .dd-panel { transform: rotateX(0) translateY(0) scale(1); }
 
+    /* Main layout: content column + persistent right rail (watchlist + alerts) */
+    .main-rail-grid { display: grid; grid-template-columns: 1fr; align-items: start; gap: 1.5rem; }
+    @media (min-width: 1024px) {
+      .main-rail-grid { grid-template-columns: minmax(0, 1fr) 320px; }
+      #utilityRail { position: sticky; top: 6rem; }
+    }
+
     /* ============================================================
        3D ANIMATIONS
        ============================================================ */
@@ -700,7 +707,7 @@
 
   <!-- Main Layout -->
   <div class="max-w-7xl mx-auto px-4 py-6">
-    <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+    <div class="main-rail-grid">
     <div class="min-w-0">
     <!-- Top Bar: Girl Illustration + Market Status -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -1233,7 +1240,6 @@
         </div>
       </div>
     </div>
-  </div>
 
   <!-- ABCD Expert Panel Section -->
     <div id="section-expertpanel" class="section hidden">
@@ -1412,7 +1418,6 @@
       </div>
     </div>
     </div>
-    </div>
     <!-- End main column -->
 
     <!-- Persistent right rail: Invest Watchlist + Price Alerts (shown on every section) -->
@@ -1465,6 +1470,7 @@
         <p class="text-[10px] text-keyboard-silver/30">Alerts check live prices every 20 seconds. Triggered alerts also ring a chime.</p>
       </div>
     </aside>
+    </div>
 
 <!-- Stock Signal Chart Modal -->
   <div id="ssModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
