@@ -329,7 +329,7 @@
       }
 
       // ---- live ticker (graceful fallback) ----
-      const SYMS = ['NIFTY', 'SENSEX', 'RELIANCE.NS', 'TCS', 'HDFCBANK.NS', 'INFY', 'SBIN.NS', 'TATAMOTORS', 'AUROPHARMA', 'WIPRO.NS', 'COALINDIA.NS', 'NVDA', 'AAPL', 'MSFT', 'BTC-USD', 'ETH-USD'];
+      const SYMS = '^NSEI,^BSESN,RELIANCE.NS,TCS,HDFCBANK.NS,INFY,SBIN.NS,TATAMOTORS,AUROPHARMA,WIPRO.NS,COALINDIA.NS,NVDA,AAPL,MSFT,BTC-USD,ETH-USD';
       const CURATED = [
         { s: 'NIFTY 50', p: '24,512', d: '+0.62%' }, { s: 'SENSEX', p: '81,090', d: '+0.55%' },
         { s: 'RELIANCE.NS', p: '2,845', d: '+1.24%' }, { s: 'TCS', p: '4,110', d: '+0.42%' },
@@ -352,20 +352,22 @@
 
       async function loadTicker() {
         const out = [];
-        for (const sym of SYMS.slice(0, 6)) {
-          try {
-            const res = await fetch('/functions/proxy?mode=quote&symbol=' + encodeURIComponent(sym), { headers: { 'accept': 'application/json' } });
-            if (!res.ok) throw 0;
-            const d = await res.json();
-            const q = d && d.data ? d.data : d;
-            if (q && q.symbol && q.regularMarketPrice != null) {
+        try {
+          const res = await fetch('/functions/proxy?mode=quote&symbols=' + encodeURIComponent(SYMS), { headers: { 'accept': 'application/json' } });
+          if (!res.ok) throw 0;
+          const d = await res.json();
+          const list = d && d.quoteResponse && d.quoteResponse.result;
+          if (Array.isArray(list)) {
+            list.forEach((q) => {
               const price = Number(q.regularMarketPrice);
-              const prev = Number(q.previousClose || q.regularMarketPreviousClose || 0);
-              const chg = prev ? (((price - prev) / prev) * 100) : 0;
-              out.push({ s: q.symbol, p: price.toLocaleString('en-IN', { maximumFractionDigits: 2 }), d: (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%' });
-            }
-          } catch (e) { /* fall through */ }
-        }
+              if (q.symbol && !isNaN(price)) {
+                const prev = Number(q.regularMarketPreviousClose || 0);
+                const chgPct = prev > 0 ? ((price - prev) / prev) * 100 : Number(q.regularMarketChangePercent || 0);
+                out.push({ s: q.symbol, p: price.toLocaleString('en-IN', { maximumFractionDigits: 2 }), d: (chgPct >= 0 ? '+' : '') + chgPct.toFixed(2) + '%' });
+              }
+            });
+          }
+        } catch (e) { /* fall back to curated */ }
         renderTicker(out);
       }
       loadTicker();
