@@ -571,7 +571,9 @@ const CHAT_PROVIDERS = [
     { id: 'z-ai/glm-5.3-flash', label: 'NVIDIA GLM-5.3 Flash' },
     { id: 'openai/gpt-oss-20b', label: 'NVIDIA GPT-OSS 20B' },
     { id: 'mistralai/mistral-nemotron', label: 'NVIDIA Mistral Nemotron' },
-    { id: 'nvidia/nemotron-3.5-lightning-30b-a3b', label: 'NVIDIA Nemotron 3.5 Lightning' } ] },
+    { id: 'nvidia/nemotron-3.5-lightning-30b-a3b', label: 'NVIDIA Nemotron 3.5 Lightning' },
+    { id: 'meta/llama-3.2-11b-vision-instruct', label: 'NVIDIA Llama 3.2 11B Vision' },
+    { id: 'nvidia/nemotron-3-ultra-550b-a55b', label: 'NVIDIA Nemotron 3 Ultra 550B' } ] },
   { name: 'huggingface', key: 'HF', base: 'https://router.huggingface.co/v1', models: [
     { id: 'Qwen/Qwen2.5-72B-Instruct', label: 'HF Qwen 72B' },
     { id: 'microsoft/Phi-3.5-mini-instruct', label: 'HF Phi-3.5 Mini' } ] },
