@@ -571,8 +571,9 @@ const CHAT_PROVIDERS = [
     { id: 'command-a-plus-05-2026', label: 'Cohere Command A+' },
     { id: 'command-r-plus-08-2024', label: 'Cohere Command R+' } ] },
   { name: 'nvidia', key: 'NVIDIA', base: 'https://integrate.api.nvidia.com/v1', models: [
-    { id: 'meta/llama-3.3-70b-instruct', label: 'NVIDIA Llama 3.3 70B' },
-    { id: 'deepseek-ai/deepseek-r1', label: 'NVIDIA DeepSeek R1' } ] },
+    { id: 'z-ai/glm-5.3-flash', label: 'NVIDIA GLM-5.3 Flash' },
+    { id: 'openai/gpt-oss-20b', label: 'NVIDIA GPT-OSS 20B' },
+    { id: 'mistralai/mistral-nemotron', label: 'NVIDIA Mistral Nemotron' } ] },
   { name: 'zai', key: 'ZAI', base: 'https://api.z.ai/api/paas/v4', models: [
     { id: 'glm-4.5-flash', label: 'Z.ai GLM-4.5 Flash (free)' },
     { id: 'glm-4.7-flash', label: 'Z.ai GLM-4.7 Flash (free)' } ] },
