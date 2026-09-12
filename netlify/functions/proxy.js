@@ -564,19 +564,14 @@ const CHAT_PROVIDERS = [
     { id: 'gpt-5.6-luna', label: 'GPT-5.6 Luna' },
     { id: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
     { id: 'qwen3.8-27b', label: 'Qwen3.8 27B' } ] },
-  { name: 'mistral', key: 'MISTRAL', base: 'https://api.mistral.ai/v1', models: [
-    { id: 'mistral-small-latest', label: 'Mistral Small 3.3' },
-    { id: 'open-mistral-nemo', label: 'Mistral Nemo 12B' } ] },
-  { name: 'cohere', key: 'COHERE', base: 'https://api.cohere.ai/compatibility/v1', models: [
-    { id: 'command-a-plus-05-2026', label: 'Cohere Command A+' },
-    { id: 'command-r-plus-08-2024', label: 'Cohere Command R+' } ] },
+  // NVIDIA — free NIM API keys from build.nvidia.com. Keys are pooled via
+  // NVIDIA_API_KEY_1..5; each free key only unlocks specific models, so the
+  // router tries every key per model. Only chat-able models are listed.
   { name: 'nvidia', key: 'NVIDIA', base: 'https://integrate.api.nvidia.com/v1', models: [
     { id: 'z-ai/glm-5.3-flash', label: 'NVIDIA GLM-5.3 Flash' },
     { id: 'openai/gpt-oss-20b', label: 'NVIDIA GPT-OSS 20B' },
-    { id: 'mistralai/mistral-nemotron', label: 'NVIDIA Mistral Nemotron' } ] },
-  { name: 'zai', key: 'ZAI', base: 'https://api.z.ai/api/paas/v4', models: [
-    { id: 'glm-4.5-flash', label: 'Z.ai GLM-4.5 Flash (free)' },
-    { id: 'glm-4.7-flash', label: 'Z.ai GLM-4.7 Flash (free)' } ] },
+    { id: 'mistralai/mistral-nemotron', label: 'NVIDIA Mistral Nemotron' },
+    { id: 'nvidia/nemotron-3.5-lightning-30b-a3b', label: 'NVIDIA Nemotron 3.5 Lightning' } ] },
   { name: 'huggingface', key: 'HF', base: 'https://router.huggingface.co/v1', models: [
     { id: 'Qwen/Qwen2.5-72B-Instruct', label: 'HF Qwen 72B' },
     { id: 'microsoft/Phi-3.5-mini-instruct', label: 'HF Phi-3.5 Mini' } ] },
