@@ -545,75 +545,119 @@ async function keyedIndexQuotes(symbols, merged, put) {
 }
 
 // ---------------------------------------------------------------------------
-// AI CHAT — Experiential Labs OpenAI-compatible gateway (mode=chat).
-// Slugs: gpt-6-astra, gpt-5.6-luna, deepseek-v4-flash, qwen3.8-27b.
-// Bulk of this file is about NOT reproducing code; this gate Call with these.
+// AI CHAT — multi-provider OpenAI-compatible router (mode=chat).
+// Every provider listed below has a FREE tier (no card required):
+//   MISTRAL          console.mistral.ai/api-keys                 free tier (no card)
+//   COHERE           dashboard.cohere.com/api-keys               trial key (free credits)
+//   NVIDIA           build.nvidia.com (NIM API key)              free API credits
+//   ZAI              z.ai / open.bigmodel.cn                     GLM-4.5/4.7-Flash = $0 forever
+//   HF               huggingface.co/settings/tokens              free router inference
+//   GITHUB_MODELS    github.com/settings/tokens (models scope)   free monthly quota
+//   KIMI             platform.moonshot.ai                        free trial credits
+// A provider only runs when its env key exists (all are optional):
+//   MISTRAL_API_KEY, COHERE_API_KEY, NVIDIA_API_KEY, ZAI_API_KEY,
+//   HF_API_KEY, GITHUB_MODELS_API_KEY, KIMI_API_KEY (+ existing EXPLABS keys).
 // ---------------------------------------------------------------------------
-const EXPLABS_BASE = 'https://api.experientiallabs.ai/v1';
+const CHAT_PROVIDERS = [
+  { name: 'experiential-labs', key: 'EXPLABS', base: 'https://api.experientiallabs.ai/v1', models: [
+    { id: 'gpt-6-astra', label: 'GPT-6 Astra' },
+    { id: 'gpt-5.6-luna', label: 'GPT-5.6 Luna' },
+    { id: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
+    { id: 'qwen3.8-27b', label: 'Qwen3.8 27B' } ] },
+  { name: 'mistral', key: 'MISTRAL', base: 'https://api.mistral.ai/v1', models: [
+    { id: 'mistral-small-latest', label: 'Mistral Small 3.3' },
+    { id: 'open-mistral-nemo', label: 'Mistral Nemo 12B' } ] },
+  { name: 'cohere', key: 'COHERE', base: 'https://api.cohere.ai/compatibility/v1', models: [
+    { id: 'command-a-plus-05-2026', label: 'Cohere Command A+' },
+    { id: 'command-r-plus-08-2024', label: 'Cohere Command R+' } ] },
+  { name: 'nvidia', key: 'NVIDIA', base: 'https://integrate.api.nvidia.com/v1', models: [
+    { id: 'meta/llama-3.3-70b-instruct', label: 'NVIDIA Llama 3.3 70B' },
+    { id: 'deepseek-ai/deepseek-r1', label: 'NVIDIA DeepSeek R1' } ] },
+  { name: 'zai', key: 'ZAI', base: 'https://api.z.ai/api/paas/v4', models: [
+    { id: 'glm-4.5-flash', label: 'Z.ai GLM-4.5 Flash (free)' },
+    { id: 'glm-4.7-flash', label: 'Z.ai GLM-4.7 Flash (free)' } ] },
+  { name: 'huggingface', key: 'HF', base: 'https://router.huggingface.co/v1', models: [
+    { id: 'Qwen/Qwen2.5-72B-Instruct', label: 'HF Qwen 72B' },
+    { id: 'microsoft/Phi-3.5-mini-instruct', label: 'HF Phi-3.5 Mini' } ] },
+  { name: 'github-models', key: 'GITHUB_MODELS', base: 'https://models.github.ai/inference', models: [
+    { id: 'openai/gpt-4o-mini', label: 'GitHub gpt-4o-mini' },
+    { id: 'meta/llama-3.3-70b-instruct', label: 'GitHub Llama 3.3 70B' },
+    { id: 'deepseek/deepseek-r1', label: 'GitHub DeepSeek R1' } ] },
+  { name: 'kimi', key: 'KIMI', base: 'https://api.moonshot.ai/v1', models: [
+    { id: 'kimi-k2-0711-preview', label: 'Kimi K2 (Moonshot)' },
+    { id: 'moonshot-v1-8k', label: 'Moonshot v1 8k' } ] }
+];
 
-// { slug: modelMeta } — each with narrower field names we let the model edit.
-const EXPLABS_MODELS = {
-  'gpt-6-astra':     { label: 'GPT-6 Astra',       context: 1048576, maxOut: 128 * 1024, tags: 'flagship · reasoning' },
-  'gpt-5.6-luna':    { label: 'GPT-5.6 Luna',      context: 1100800, maxOut: 128 * 1024, tags: 'fast reasoning' },
-  'deepseek-v4-flash': { label: 'DeepSeek V4 Flash', context: 1100800, maxOut: 128 * 1024, tags: 'cheap · coding' },
-  'qwen3.8-27b':     { label: 'Qwen3.8 27B',       context: 1024 * 1024, maxOut: 64 * 1024, tags: 'free · open' }
-};
+const CHAT_SYSTEM =
+  'You are an expert stock-market analyst for Indian markets (NIFTY, SENSEX, Bank Nifty, India VIX) plus global markets. ' +
+  'Give concise, accurate, actionable answers with clear buy/sell/hold reasoning where relevant. ' +
+  'Educational only — remind when relevant that this is not financial advice.';
 
-async function explainChat(keys, body) {
-  const model = body.model || 'gpt-6-astra';
-  const maxTokens = Math.min(2048, (EXPLABS_MODELS[model] && EXPLABS_MODELS[model].maxOut) || 2048);
-  const payload = {
-    model,
-    messages: body.messages || [],
-    temperature: 0.4,
-    max_tokens: maxTokens
-  };
-  const errors = [];
-  const modelOrder = Object.keys(EXPLABS_MODELS);
-  const idx = modelOrder.indexOf(model);
-  // Prefer the key that matches this model's position (each user key is
-  // per-model), then fall back to the remaining keys in order.
-  const ordered = idx >= 0 && keys[idx] ? [keys[idx], ...keys.slice(0, idx), ...keys.slice(idx + 1)] : keys;
-  for (const key of ordered) {
-    try {
-      const res = await fetch(EXPLABS_BASE + '/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-        body: JSON.stringify(payload)
-      });
-      const txt = await res.text();
-      if (!res.ok) { errors.push(`${model} ${res.status}: ${txt.slice(0, 120)}`); continue; }
-      let d; try { d = JSON.parse(txt); } catch (e) { errors.push('bad json'); continue; }
-      const msg = d && d.choices && d.choices[0] && d.choices[0].message;
-      const content = msg && (msg.content || '');
-      if (content == null) { errors.push('no content'); continue; }
-      const plain = Array.isArray(content) ? content.map((c) => c.text || '').join('') : content;
-      return {
-        ok: true,
-        model,
-        reply: plain,
-        usage: (d && d.usage) || null,
-        finish: d && d.choices && d.choices[0].finish_reason
-      };
-    } catch (e) { errors.push(`fetch: ${e.message}`); }
+// One OpenAI-compatible chat/completions call with a hard timeout so the
+// fallback chain never hangs on a slow free-tier endpoint.
+async function openaiChatCall(base, model, key, messages) {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 45000);
+  try {
+    const res = await fetch(base.replace(/\/+$/, '') + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      body: JSON.stringify({ model, messages, temperature: 0.4, max_tokens: 2048 }),
+      signal: ac.signal
+    });
+    const txt = await res.text();
+    if (!res.ok) return { err: `HTTP ${res.status}: ${txt.slice(0, 120)}` };
+    let d; try { d = JSON.parse(txt); } catch (e) { return { err: 'bad json' }; }
+    const msg = d && d.choices && d.choices[0] && d.choices[0].message;
+    const content = msg && (msg.content ?? '');
+    if (content == null) return { err: 'empty content' };
+    const plain = Array.isArray(content) ? content.map((c) => c.text || '').join('') : String(content);
+    return { reply: plain, usage: d && d.usage, finish: d && d.choices && d.choices[0].finish_reason };
+  } catch (e) {
+    return { err: 'fetch: ' + (e.name === 'AbortError' ? 'timeout' : e.message) };
+  } finally {
+    clearTimeout(timer);
   }
-  return { ok: false, model, errors };
 }
 
-// Fall back across the full set of available models if the primary one fails.
-async function explainChatFallback(keys, body) {
-  const primary = body.model || 'gpt-6-astra';
-  const tried = {};
-  const allFailures = [];
-  const modelOrder = [primary, ...Object.keys(EXPLABS_MODELS)];
-  for (const m of modelOrder) {
-    if (tried[m]) continue;
-    tried[m] = true;
-    const r = await explainChat(keys, { ...body, model: m });
-    if (r.ok) { r.fellBackTo = m !== primary; return r; }
-    allFailures.push(...(r.errors || []).map(e => m + ': ' + e));
+// Try every configured provider in order, starting with whichever one owns the
+// requested model id. Returns the first successful reply across all providers.
+async function chatAnyProvider(body) {
+  const want = String(body.model || '').trim();
+  const messages = (body.messages || []).slice(0, 16);
+  const providers = CHAT_PROVIDERS.filter((p) => keyList(p.key).length);
+  if (!providers.length) {
+    return { ok: false, allFailed: true, errors: ['no AI provider keys configured'] };
   }
-  return { ok: false, model: primary, errors: allFailures.slice(0, 8), allFailed: true };
+  const seed = providers.find((p) => p.models.some((m) => m.id === want));
+  const ordered = seed ? [seed, ...providers.filter((p) => p !== seed)] : providers;
+  const errors = [];
+  let attempts = 0;
+  for (const p of ordered) {
+    const models = p.models.slice();
+    const hit = models.findIndex((m) => m.id === want);
+    if (hit >= 0) models.unshift(models.splice(hit, 1)[0]);
+    const keys = keyList(p.key);
+    for (const m of models) {
+      for (const key of keys) {
+        if (attempts >= 14) break;
+        attempts++;
+        const r = await openaiChatCall(p.base, m.id, key, messages);
+        if (r.err) { errors.push(`${p.name}/${m.id}: ${r.err}`); continue; }
+        return {
+          ok: true,
+          provider: p.name,
+          model: m.id,
+          label: m.label,
+          reply: r.reply,
+          usage: r.usage || null,
+          finish: r.finish || null,
+          fellBackTo: !(want && m.id === want)
+        };
+      }
+    }
+  }
+  return { ok: false, allFailed: true, errors: errors.slice(0, 10) };
 }
 
 // Trading Economics — India markets page contains NIFTY 50 + SENSEX quotes rendered
@@ -673,22 +717,28 @@ export default async (event, context) => {
 
   if (params.mode === 'news') return await handleNews(params.topic || 'markets');
 
-  // AI Market Advisor — Proxies to the Experiential Labs gateway so the browser
-  // never sees a key. message is the user's text; model is optional.
+  // AI Market Advisor — proxies to free-tier OpenAI-compatible providers so the
+  // browser never sees a key. message is the user's text; model is optional and
+  // falls back across every configured provider.
   if (params.mode === 'chat') {
-    const keys = keyList('EXPLABS');
-    if (!keys.length) return corsResponse(JSON.stringify({ error: 'EXPLABS_API_KEY not configured' }), 200);
     const message = String(params.message || '').trim();
     if (!message) return corsResponse(JSON.stringify({ error: 'message required' }), 400);
-    const model = String(params.model || 'gpt-6-astra').trim();
-    const r = await explainChatFallback(keys, {
+    const model = String(params.model || '').trim() || 'gpt-6-astra';
+    const configured = CHAT_PROVIDERS.filter((p) => keyList(p.key).length).map((p) => p.name);
+    if (!configured.length) {
+      return corsResponse(JSON.stringify({
+        error: 'No AI provider keys configured — set any of EXPLABS_API_KEY, MISTRAL_API_KEY, COHERE_API_KEY, NVIDIA_API_KEY, ZAI_API_KEY, HF_API_KEY, GITHUB_MODELS_API_KEY or KIMI_API_KEY in Netlify.'
+      }), 200);
+    }
+    const r = await chatAnyProvider({
       model,
       messages: [
-        { role: 'system', content: 'You are an expert stock-market analyst for Indian markets (NIFTY, SENSEX, Bank Nifty, India VIX) plus global markets. Give concise, accurate, actionable answers with clear buy/sell/hold reasoning where relevant. Educational only — remind when relevant that this is not financial advice.' },
+        { role: 'system', content: CHAT_SYSTEM },
         { role: 'user', content: message }
       ]
     });
-    return corsResponse(JSON.stringify(r), r.ok ? 200 : 200);
+    r.providers = configured;
+    return corsResponse(JSON.stringify(r), 200);
   }
 
   // Batch live quote endpoint (used by the market ticker): ONE call for all indices.

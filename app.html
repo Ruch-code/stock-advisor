@@ -1551,6 +1551,13 @@
         <option value="gpt-5.6-luna">GPT-5.6 Luna</option>
         <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
         <option value="qwen3.8-27b">Qwen3.8 27B</option>
+        <option value="mistral-small-latest">Mistral Small 3.3 (free)</option>
+        <option value="command-a-plus-05-2026">Cohere Command A+ (free)</option>
+        <option value="meta/llama-3.3-70b-instruct">NVIDIA Llama 3.3 70B (free)</option>
+        <option value="glm-4.5-flash">Z.ai GLM-4.5 Flash (free)</option>
+        <option value="Qwen/Qwen2.5-72B-Instruct">HF Qwen 72B (free)</option>
+        <option value="openai/gpt-4o-mini">GitHub gpt-4o-mini (free)</option>
+        <option value="kimi-k2-0711-preview">Kimi K2 (free)</option>
       </select>
     </div>
     <div id="aiChatBody" class="flex-1 overflow-y-auto px-3 py-2 space-y-2 text-[11px] leading-relaxed min-h-[160px]"></div>
@@ -5024,13 +5031,20 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 
 // ============================================================
-// AI MARKET ADVISOR — Experiential Labs chat widget
+// AI MARKET ADVISOR — free-tier multi-provider chat widget
 // ============================================================
 const AI_MODELS = {
-  'gpt-6-astra':       'GPT-6 Astra',
-  'gpt-5.6-luna':      'GPT-5.6 Luna',
-  'deepseek-v4-flash': 'DeepSeek V4 Flash',
-  'qwen3.8-27b':       'Qwen3.8 27B'
+  'gpt-6-astra':                  'GPT-6 Astra',
+  'gpt-5.6-luna':                 'GPT-5.6 Luna',
+  'deepseek-v4-flash':            'DeepSeek V4 Flash',
+  'qwen3.8-27b':                  'Qwen3.8 27B',
+  'mistral-small-latest':         'Mistral Small 3.3',
+  'command-a-plus-05-2026':       'Cohere Command A+',
+  'meta/llama-3.3-70b-instruct':  'NVIDIA Llama 3.3 70B',
+  'glm-4.5-flash':                'Z.ai GLM-4.5 Flash',
+  'Qwen/Qwen2.5-72B-Instruct':    'HF Qwen 72B',
+  'openai/gpt-4o-mini':           'GitHub gpt-4o-mini',
+  'kimi-k2-0711-preview':         'Kimi K2'
 };
 let aiChatOpen = false;
 
@@ -5074,7 +5088,7 @@ async function sendAIChat() {
   think.classList.remove('hidden');
   const model = document.getElementById('aiChatModel').value;
   const qs = new URLSearchParams({ mode: 'chat', model, message: q });
-  let reply = '⚠️ The AI advisor isn\'t reachable right now — check that EXPLABS_API_KEY is set in Netlify.';
+  let reply = '⚠️ The AI advisor isn\'t reachable right now — check that an AI API key (e.g. MISTRAL_API_KEY, ZAI_API_KEY, HF_API_KEY, or EXPLABS_API_KEY) is set in Netlify.';
   try {
     const res = await fetchWithTimeout(API.YAHOO_QUOTE + '?' + qs.toString(), {}, 60000);
     const d = await res.json();
