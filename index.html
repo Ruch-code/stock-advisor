@@ -29,8 +29,8 @@
     #orbC { width: 38rem; height: 38rem; background: radial-gradient(circle, rgba(16,185,129,0.28), transparent 65%); bottom: -8rem; left: 30%; }
 
     /* ---- 3D scene (cursor-tilted perspective) ---- */
-    #scene3d { position: relative; z-index: 10; transform-style: preserve-3d; will-change: transform; }
-    .sc-layer { transform-style: preserve-3d; will-change: transform; }
+    #scene3d { position: relative; z-index: 10; transform-style: flat; will-change: transform; }
+    .sc-layer { transform-style: flat; will-change: transform; }
     .sc-far  { transform: translateZ(60px); }
     .sc-mid  { transform: translateZ(180px); }
     .sc-near { transform: translateZ(320px); }
