@@ -841,6 +841,7 @@
     <!-- Navigation (grouped dropdowns, top-site style) -->
     <nav id="topNav" class="flex flex-wrap items-center gap-2 mb-6" aria-label="Primary">
       <button onclick="showSection('dashboard')" class="key-press tab-btn tab-active px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all" data-section="dashboard">Home</button>
+      <button onclick="showSection('candle')" class="key-press tab-btn px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all" data-section="candle">📚 Candlesticks</button>
 
       <!-- Markets group -->
       <div class="dropdown" data-group="markets">
@@ -921,67 +922,6 @@
         <ul id="roadmapList" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[12px]"></ul>
       </div>
 
-      <!-- Candlestick Chart + Pattern Info -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div class="lg:col-span-2 card rounded-2xl p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-3">
-              <h3 class="text-sm font-semibold silver-text">Live Candlestick Chart</h3>
-              <select id="chartSymbol" onchange="changeChartSymbol()" class="bg-keyboard-grey/50 text-keyboard-light text-xs rounded-lg px-2 py-1 border border-keyboard-grey/30 focus:border-purple-glow/50 outline-none">
-                <option value="SPY">S&P 500 (SPY)</option>
-                <option value="QQQ">NASDAQ (QQQ)</option>
-                <option value="AAPL">Apple (AAPL)</option>
-                <option value="MSFT">Microsoft (MSFT)</option>
-                <option value="GOOGL">Google (GOOGL)</option>
-                <option value="AMZN">Amazon (AMZN)</option>
-                <option value="NVDA">NVIDIA (NVDA)</option>
-                <option value="TSLA">Tesla (TSLA)</option>
-                <option value="RELIANCE.NS">Reliance (NSE)</option>
-                <option value="TCS.NS">TCS (NSE)</option>
-                <option value="INFY.NS">Infosys (NSE)</option>
-              </select>
-            </div>
-            <div class="flex items-center gap-2">
-              <span id="chartInterval" class="text-[10px] text-keyboard-silver/50">1min</span>
-              <div class="live-dot"></div>
-            </div>
-          </div>
-          <div id="chartContainer" class="relative chart-container h-[300px] md:h-[400px]">
-            <div id="chartEmpty" class="hidden absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-6">
-              <p class="text-2xl mb-2">📡</p>
-              <p class="text-sm font-semibold text-keyboard-silver/80 mb-1">No live data available</p>
-              <p class="text-[11px] text-keyboard-silver/50 max-w-xs">Simulated candles are disabled — only real market data is shown. Retrying automatically...</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Pattern Detection Panel -->
-        <div class="lg:col-span-1 card rounded-2xl p-4">
-          <h3 class="text-sm font-semibold silver-text mb-3 flex items-center gap-2">
-            <svg class="w-4 h-4 text-purple-light" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-            Pattern Detection
-          </h3>
-          <div id="patternList" class="space-y-2 max-h-[350px] overflow-y-auto">
-            <div class="shimmer rounded-lg h-12"></div>
-            <div class="shimmer rounded-lg h-12"></div>
-            <div class="shimmer rounded-lg h-12"></div>
-          </div>
-          <div id="patternTooltip" class="pattern-tooltip"></div>
-        </div>
-      </div>
-
-      <!-- Mini Bar Chart - Volume/RSI -->
-      <div class="card rounded-2xl p-4 mb-6">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-semibold silver-text">Volume & RSI Analysis</h3>
-          <div class="flex gap-2">
-            <button onclick="setMiniChart('volume')" class="key-press text-[10px] px-2 py-1 rounded bg-purple-glow/20 text-purple-light" id="miniVol">Volume</button>
-            <button onclick="setMiniChart('rsi')" class="key-press text-[10px] px-2 py-1 rounded bg-keyboard-grey/30 text-keyboard-silver/50" id="miniRSI">RSI</button>
-          </div>
-        </div>
-        <div id="miniChartContainer" class="h-[120px]"></div>
-      </div>
-
       <!-- Top Picks Quick View -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="card rounded-xl p-4">
@@ -1005,6 +945,53 @@
           </div>
           <div id="topFundamentals" class="space-y-1"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- Candlestick Knowledge Base Section -->
+    <div id="section-candle" class="section hidden">
+      <div class="card rounded-2xl p-6 mb-6">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div class="flex items-center gap-3">
+            <svg class="w-6 h-6 text-purple-light" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 3h2v18H7zM11 6h2v12h-2zM15 3h2v18h-2zM4 9h2v6H4zM20 9h-2v6h2z"/></svg>
+            <div>
+              <h2 class="text-lg font-bold silver-text">Candlestick Knowledge Base</h2>
+              <p class="text-xs text-keyboard-silver/50 mt-1">How to read any chart — candle anatomy plus 16 classic patterns in plain English.</p>
+            </div>
+          </div>
+          <span class="text-[10px] text-keyboard-silver/45">Education only · not trade advice</span>
+        </div>
+
+        <!-- Anatomy -->
+        <div class="rounded-2xl border border-keyboard-grey/20 bg-keyboard-black/40 p-5">
+          <h3 class="text-sm font-semibold silver-text mb-3">Candle anatomy</h3>
+          <div class="grid grid-cols-1 md:grid-cols-[230px_1fr] gap-6 items-center">
+            <div class="flex justify-center rounded-xl bg-keyboard-black/60 border border-keyboard-grey/20 py-4">
+              <svg viewBox="0 0 60 120" class="w-24 h-40" aria-hidden="true">
+                <line x1="30" y1="16" x2="30" y2="42" stroke="#22c55e" stroke-width="2.5"/>
+                <rect x="20" y="42" width="20" height="30" rx="1.5" fill="#22c55e"/>
+                <line x1="30" y1="72" x2="30" y2="104" stroke="#22c55e" stroke-width="2.5"/>
+                <line x1="22" y1="16" x2="38" y2="16" stroke="#9ca3af" stroke-width="1.5"/>
+                <line x1="22" y1="104" x2="38" y2="104" stroke="#9ca3af" stroke-width="1.5"/>
+                <line x1="20" y1="42" x2="8" y2="42" stroke="#9ca3af" stroke-width="1" stroke-dasharray="2 2"/>
+                <line x1="20" y1="72" x2="8" y2="72" stroke="#9ca3af" stroke-width="1" stroke-dasharray="2 2"/>
+              </svg>
+            </div>
+            <ul class="space-y-2 text-[12px] text-keyboard-silver/70">
+              <li><b class="text-keyboard-light">High</b> — highest price touched in the period (top of the upper wick).</li>
+              <li><b class="text-green-400">Upper wick / shadow</b> — how far buyers pushed above the open/close body.</li>
+              <li><b class="text-keyboard-light">Open &amp; Close</b> — the body. Filled green when price rose (close &gt; open), red when it fell. Many platforms call a green candle a "bullish" or "up" candle.</li>
+              <li><b class="text-keyboard-light">Body</b> — the solid block, the heart of the candle. Long body = strong conviction; tiny body = hesitation.</li>
+              <li><b class="text-red-400">Lower wick / shadow</b> — how far sellers pushed below the body.</li>
+              <li><b class="text-keyboard-light">Low</b> — lowest price touched in the period.</li>
+              <li><b class="text-yellow-400">Rule of thumb</b> — long lower wick = buyers stepped in; long upper wick = sellers rejected the high.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Classic patterns -->
+        <h3 class="text-sm font-semibold silver-text mb-3 mt-6">Classic patterns</h3>
+        <div id="candleKBList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
       </div>
     </div>
 
@@ -2384,6 +2371,7 @@ function renderMarketStatus(cond) {
 
 function renderPatternList(patterns) {
   const list = document.getElementById('patternList');
+  if (!list) return;
   if (!patterns || patterns.length === 0) {
     list.innerHTML = '<p class="text-xs text-keyboard-silver/40 text-center py-4">No patterns detected. Loading more data...</p>';
     return;
@@ -2408,6 +2396,46 @@ function renderPatternList(patterns) {
       </div>
     `;
   }).join('');
+}
+
+// ============================================================
+// CANDLESTICK KNOWLEDGE BASE
+// ============================================================
+const CANDLE_KB = [
+  { name: 'Doji', type: 'neutral', desc: 'Tiny or no body — buyers and sellers are dead even. Often signals indecision, and at the end of a move it can warn of a reversal.' },
+  { name: 'Spinning Top', type: 'neutral', desc: 'Small body with long upper and lower wicks. The market is undecided — the next candle usually shows the direction.' },
+  { name: 'Hammer', type: 'bullish', desc: 'Long lower wick, tiny body near the top. Buyers rejected a sell-off — a bullish reversal signal at support.' },
+  { name: 'Shooting Star', type: 'bearish', desc: 'Long upper wick, tiny body near the bottom. Sellers rejected a rally — a bearish reversal signal at resistance.' },
+  { name: 'Bullish Marubozu', type: 'bullish', desc: 'Fat body, almost no wicks — opens at the low and closes at the high. Very strong conviction from buyers.' },
+  { name: 'Bearish Marubozu', type: 'bearish', desc: 'Fat body, almost no wicks — opens at the high and closes at the low. Very strong conviction from sellers.' },
+  { name: 'Bullish Engulfing', type: 'bullish', desc: 'A green candle completely swallows the previous red candle. Buyers took full control — a strong reversal signal.' },
+  { name: 'Bearish Engulfing', type: 'bearish', desc: 'A red candle completely swallows the previous green candle. Sellers took full control — a strong reversal signal.' },
+  { name: 'Piercing Line', type: 'bullish', desc: 'Two candles: opens below the previous low, then closes above its midpoint. Buyers are stepping back in.' },
+  { name: 'Dark Cloud Cover', type: 'bearish', desc: 'Two candles: opens above the previous high, then closes below its midpoint. Sellers are taking over.' },
+  { name: 'Tweezer Bottom', type: 'bullish', desc: 'Two candles with matching lows near support. Sellers failed twice — buying pressure is building.' },
+  { name: 'Tweezer Top', type: 'bearish', desc: 'Two candles with matching highs near resistance. Buyers failed twice — selling pressure is building.' },
+  { name: 'Morning Star', type: 'bullish', desc: 'Three candles: a big red, a small indecision, then a big green. A textbook bottom-reversal pattern.' },
+  { name: 'Evening Star', type: 'bearish', desc: 'Three candles: a big green, a small indecision, then a big red. A textbook top-reversal pattern.' },
+  { name: 'Three White Soldiers', type: 'bullish', desc: 'Three consecutive green candles closing higher each time. Strong bullish continuation momentum.' },
+  { name: 'Three Black Crows', type: 'bearish', desc: 'Three consecutive red candles closing lower each time. Strong bearish continuation momentum.' }
+];
+
+function renderCandleKB() {
+  const list = document.getElementById('candleKBList');
+  if (!list) return;
+  list.innerHTML = CANDLE_KB.map(p => {
+    const color = p.type === 'bullish' ? 'green' : p.type === 'bearish' ? 'red' : 'yellow';
+    const tag = p.type === 'bullish' ? 'Bullish' : p.type === 'bearish' ? 'Bearish' : 'Neutral';
+    return `
+      <div class="rounded-xl bg-keyboard-dark/50 border border-keyboard-grey/20 p-4 hover:border-purple-glow/40 transition-colors">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <b class="text-sm text-keyboard-light">${p.name}</b>
+          <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-${color}-500/20 text-${color}-400">${tag}</span>
+        </div>
+        <p class="text-[11px] text-keyboard-silver/60 leading-relaxed">${p.desc}</p>
+      </div>
+    `;
+}).join('');
 }
 
 function showPatternTooltip(event, element) {
@@ -3162,7 +3190,9 @@ async function fetchYahooQuoteProxy(symbol) {
 // MAIN DATA LOADING
 // ============================================================
 async function loadChartData() {
-  const symbol = document.getElementById('chartSymbol').value;
+  const symbolSel = document.getElementById('chartSymbol');
+  if (!symbolSel) return;
+  const symbol = symbolSel.value;
   const emptyEl = document.getElementById('chartEmpty');
   const patternList = document.getElementById('patternList');
 
@@ -4745,6 +4775,7 @@ async function init() {
   renderAlerts();
   renderIndicesEdu();
   renderRoadmap();
+  renderCandleKB();
   renderWatchlistPanel();
 
   // Load indices, market condition, macro + news ticker (TerminalFeed)
@@ -4760,7 +4791,7 @@ async function init() {
   // falling back to the dashboard); other sections lazy-load on tab click
   document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
   const lastTab = (function() { try { return localStorage.getItem('stockpulse_last_tab'); } catch (e) { return null; } })();
-  const validTabs = ['dashboard', 'desk', 'paper', 'signals', 'oversold', 'trending', 'expertpanel', 'portfolio', 'brokers', 'mutualfunds', 'crypto'];
+  const validTabs = ['dashboard', 'candle', 'desk', 'paper', 'signals', 'oversold', 'trending', 'expertpanel', 'portfolio', 'brokers', 'mutualfunds', 'crypto'];
   const restore = (lastTab && validTabs.indexOf(lastTab) !== -1) ? lastTab : 'dashboard';
   document.getElementById('marketToggle').textContent = state.market === 'US' ? 'US Market' : 'Indian Market';
   if (restore === 'dashboard') {
