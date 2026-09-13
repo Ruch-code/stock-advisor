@@ -5092,15 +5092,14 @@ async function sendAIChat() {
   think.classList.remove('hidden');
   const model = document.getElementById('aiChatModel').value;
   const qs = new URLSearchParams({ mode: 'chat', model, message: q });
-  let reply = '⚠️ The AI advisor isn\'t reachable right now — check that an AI API key (e.g. MISTRAL_API_KEY, ZAI_API_KEY, HF_API_KEY, or EXPLABS_API_KEY) is set in Netlify.';
+  const FRIENDLY = '⚠️ The AI Market Advisor is still in development and isn\'t responding right now. Hang tight — it\'ll be back online soon!';
+  let reply = FRIENDLY;
   try {
     const res = await fetchWithTimeout(API.YAHOO_QUOTE + '?' + qs.toString(), {}, 60000);
     const d = await res.json();
     if (d && d.ok && d.reply) reply = d.reply;
-    else if (d && d.error) reply = '⚠️ ' + d.error;
-    else if (d && d.allFailed) reply = '⚠️ All AI models failed: ' + (d.errors || []).slice(0,2).join(' · ');
-    else if (d && !d.ok && d.errors && d.errors.length) reply = '⚠️ ' + d.errors[0];
-  } catch (e) { reply = '⚠️ AI request failed: ' + e.message; }
+    else reply = FRIENDLY;
+  } catch (e) { reply = FRIENDLY; }
   think.classList.add('hidden');
   const row = aiAppend('ai', reply);
   if (row) { row.setAttribute('data-role','ai'); }
