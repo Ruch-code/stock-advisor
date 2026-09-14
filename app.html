@@ -855,11 +855,15 @@
             <span class="dd-ico">📰</span>
             <span class="dd-txt"><b>Daily Paper</b><em>Morning market brief</em></span>
           </button>
-          <button type="button" onclick="showSection('oversold')" data-section="oversold" class="dd-item key-press" role="menuitem">
-            <span class="dd-ico">📉</span>
-            <span class="dd-txt"><b>Oversold</b><em>Beaten-down reversal plays</em></span>
-          </button>
-        </div>
+<button type="button" onclick="showSection('oversold')" data-section="oversold" class="dd-item key-press" role="menuitem">
+    <span class="dd-ico">📉</span>
+    <span class="dd-txt"><b>Oversold</b><em>Beaten-down reversal plays</em></span>
+  </button>
+  <button type="button" onclick="showSection('ipo')" data-section="ipo" class="dd-item key-press" role="menuitem">
+    <span class="dd-ico">📝</span>
+    <span class="dd-txt"><b>Indian IPOs</b><em>How to apply & evaluate</em></span>
+  </button>
+</div>
       </div>
 
       <!-- Stocks group -->
@@ -1013,6 +1017,93 @@
         <!-- Classic patterns -->
         <h3 class="text-sm font-semibold silver-text mb-3 mt-6">Classic patterns</h3>
         <div id="candleKBList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+      </div>
+    </div>
+
+    <!-- Indian IPOs Section -->
+    <div id="section-ipo" class="section hidden">
+      <div class="card rounded-2xl p-6 mb-6">
+        <h2 class="text-lg font-bold silver-text mb-2">Indian IPO Guide</h2>
+        <p class="text-xs text-keyboard-silver/50 mb-4">Learn how to apply, evaluate, and understand the risks of upcoming IPOs.</p>
+
+        <!-- How to Apply -->
+        <div class="rounded-2xl border border-keyboard-grey/20 bg-keyboard-black/40 p-4 mb-4">
+          <h4 class="text-sm font-semibold silver-text mb-3">How to Apply</h4>
+          <ul class="text-[11px] text-keyboard-silver/60 space-y-1">
+            <li>UPI Mandate: Use your trading app's UPI feature to bid ( fastest method).</li>
+            <li>ASBA: Apply through your bank's ASBA facility (funds blocked, allotted after closure).</li>
+            <li>Broker Platform: Log in to your broker's website/app, select the IPO, enter quantity.</li>
+            <li>Minimum Lot: Buy in lots (not individual shares); lot size varies by IPO.</li>
+            <li>Payment: UPI auto-debits blocked amount; ASBA blocks funds in your account.</li>
+          </ul>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <h5 class="text-xs font-semibold silver-text mb-2">Lot Size & Pricing</h5>
+            <ul class="text-[11px] text-keyboard-silver/60 space-y-1">
+              <li>Lot Size: Minimum number of shares you can bid for (e.g., 10, 15, 20 shares).</li>
+              <price-band">Price Band: Range (e.g., ₹100-₹120 per share); final price set via book building.</li>
+              <br="minlot">Cut-off Price: Bid at any price within the band; allotment at cut-off usually increases chances.</li>
+            </ul>
+          </div>
+          <div>
+            <h5 class="text-xs font-semibold silver-text mb-2">Key Financials to Review</h5>
+            <ul class="text-[11px] text-keyboard-silver/60 space-y-1">
+              <li>RoE (Return on Equity): >15% is generally healthy.</li>
+              <li>Debt/Equity: Lower is safer; >0.5 may indicate leverage risk.</li>
+              <li>Promoter Holding: >50% concentrated promoter ownership can be a red flag.</li>
+              <li>EPS (Earnings Per Share): Growing EPS signals profitability.</li>
+              <li>IPO Grade: Some agencies assign grades (e.g., AAA, AA); take as one input only.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Risks & Timeline -->
+        <div class="rounded-2xl border border-keyboard-grey/20 bg-keyboard-black/40 p-4 mb-4">
+          <h4 class="text-sm font-semibold silver-text mb-3">Risks & Timeline</h4>
+          <ul class="text-[11px] text-keyboard-silver/60 space-y-1">
+            <li>Lock-in Period: Promoters & insiders can't sell for 1 year (usually) after listing.</li>
+            <li>Grey Market Premium (GMP): Indicates grey-market sentiment but is speculative.</li>
+            <li>Allotment Date: Typically 5-7 working days after IPO closure.</li>
+            <li>Listing Date: Shares list on NSE/BSE 1-2 weeks after allotment.</li>
+            <li>Risk: IPOs are not guaranteed profits; market can list below issue price.</li>
+          </ul>
+        </div>
+
+        <!-- Pros & Cons -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <h5 class="text-xs font-semibold silver-text mb-2">✅ Pros</h5>
+            <ul class="text-[11px] text-keyboard-silver/60 space-y-1">
+              <li>Early entry into potentially high-growth companies.</li>
+              <li>Price discovery via book building (market-determined price).</li>
+              <li>Listing gains possible if demand > supply on debut.</li>
+            </ul>
+          </div>
+          <div>
+            <h5 class="text-xs font-semibold silver-text mb-2">❌ Cons</h5>
+            <ul class="text-[11px] text-keyboard-silver/60 space-y-1">
+              <li>No guaranteed listing profit; can list at a discount.</li>
+              <li>Lock-in for promoters limits immediate insider exit.</li>
+              <li>Subscription status (oversubscribed) doesn't guarantee allotment.</li>
+              <li>Lock-in period (typically 1 year) before promoters can sell.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- How to Improve Chances -->
+        <div class="rounded-2xl border border-keyboard-grey/20 bg-keyboard-black/40 p-4">
+          <h4 class="text-sm font-semibold silver-text mb-3">How to Improve Allotment Chances</h4>
+          <ul class="text-[11px] text-keyboard-silver/60 space-y-1">
+            <li>Bid at the cut-off price — historically higher allotment rate.</li>
+            <li>Apply through multiple accounts (family members with different brokers).</li>
+            <li>Smaller lot sizes in oversubscribed IPOs may have better chances.</li>
+            <li>Avoid applying only when IPO is massively oversubscribed (100x+).</li>
+            <li>Check the company's RHP (Red Herring Prospectus) on SEBI website.</li>
+          </ul>
+        </div>
       </div>
     </div>
 
