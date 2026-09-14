@@ -946,6 +946,27 @@
           <div id="topFundamentals" class="space-y-1"></div>
         </div>
       </div>
+
+      <!-- Sellers' Watchlist -->
+      <div class="card rounded-2xl p-5 mt-6" data-tilt="2">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+          <div class="flex items-center gap-3">
+            <h4 class="text-base font-bold silver-text">🔻 Sellers' Watchlist</h4>
+            <span class="text-[10px] text-keyboard-silver/45">Live Yahoo feed · refresh anytime</span>
+          </div>
+          <button onclick="loadSellerWatch(true)" class="key-press text-[10px] px-2.5 py-1 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">↻ Refresh</button>
+        </div>
+        <p class="text-[10px] text-keyboard-silver/40 mb-3">Most Sold = biggest % drop today. Low Valuation = price cheapest vs 2 sessions ago. 💥 marks volume &gt; 1.5× its 5-day average.</p>
+        <div id="sellerWatchList"></div>
+        <div id="sellerLoading" class="space-y-2">
+          <div class="shimmer rounded-lg h-12"></div>
+          <div class="shimmer rounded-lg h-12"></div>
+          <div class="shimmer rounded-lg h-12"></div>
+        </div>
+        <div id="sellerUnavailable" class="hidden mt-3 rounded-lg bg-red-500/5 border border-red-500/20 p-3 text-xs text-red-300/80">
+          <span class="font-semibold text-red-300">Live feed not reachable right now.</span> It retries automatically when you come back to Home or hit Refresh.
+        </div>
+      </div>
     </div>
 
     <!-- Candlestick Knowledge Base Section -->
@@ -2701,6 +2722,7 @@ function showSection(name) {
   // Load section data (only the active one; lazy, so the page stays light)
   try {
     if (name === 'dashboard') { renderQuickPicks(); loadChartData(); }
+    if (name === 'dashboard') loadSellerWatch();
     if (name === 'oversold') renderOversold(state.market === 'US' ? STOCKS.US.oversold : STOCKS.India.oversold);
     if (name === 'trending') renderTrending(state.market === 'US' ? STOCKS.US.trending : STOCKS.India.trending);
     if (name === 'signals') loadStockSignals();
@@ -2721,6 +2743,7 @@ function toggleMarket() {
   state.cache.clear();
   state.cacheTime.clear();
   renderQuickPicks();
+  if (state.section === 'dashboard') loadSellerWatch();
   if (state.section !== 'dashboard') showSection(state.section);
   loadNewsTicker();
   loadChartData();
@@ -4297,6 +4320,102 @@ async function loadStockSignals(force) {
   renderSignalList();
 }
 
+// ============================================================
+// SELLERS' WATCHLIST — most sold today + biggest 1-2 day drops
+// ============================================================
+async function loadSellerWatch(force) {
+  const unavail = document.getElementById('sellerUnavailable');
+  const loading = document.getElementById('sellerLoading');
+  if (loading) loading.classList.remove('hidden');
+  if (unavail) unavail.classList.add('hidden');
+  if (!force && state.sellData && state.sellData.items && state.sellData.ts && (Date.now() - state.sellData.ts) < 5 * 60 * 1000) {
+    if (loading) loading.classList.add('hidden');
+    renderSellerWatch();
+    return;
+  }
+  const results = [];
+  let any = false;
+  for (let i = 0; i < SIGNAL_UNIVERSE.length; i += 6) {
+    const batch = SIGNAL_UNIVERSE.slice(i, i + 6);
+    await Promise.all(batch.map(async (u) => {
+      try {
+        const candles = await fetchYahooQuoteData(u.s, '1d', '6mo');
+        const valid = (candles || []).filter(c => c && c.close > 0);
+        const closes = valid.map(c => c.close);
+        const vols = valid.map(c => c.volume);
+        if (closes.length >= 4) {
+          const last = closes[closes.length - 1];
+          const prev = closes[closes.length - 2];
+          const prev2 = closes[closes.length - 3];
+          if (prev > 0 && prev2 > 0) {
+            const avg = (vols.slice(-6, -1).reduce((a, b) => a + (b || 0), 0) / 5) || 1;
+            results.push({
+              pick: u,
+              price: last,
+              todayChg: ((last / prev) - 1) * 100,
+              chg2d: ((last / prev2) - 1) * 100,
+              volRatio: (vols[vols.length - 1] || 0) / avg,
+              rsi: rsiFromCloses(closes)
+            });
+            any = true;
+          }
+        }
+      } catch (e) { /* skip symbol */ }
+    }));
+  }
+  state.sellData = { items: results, ts: Date.now() };
+  if (loading) loading.classList.add('hidden');
+  if (unavail && !any) unavail.classList.remove('hidden');
+  renderSellerWatch();
+}
+
+function renderSellerWatch() {
+  const wrap = document.getElementById('sellerWatchList');
+  if (!wrap) return;
+  const items = (state.sellData && state.sellData.items) || [];
+  const isUS = state.market === 'US';
+  const mkts = items.filter(d => isUS ? d.pick.x === 'US' : d.pick.x === 'NSE');
+  const mostSold = [...mkts].sort((a, b) => a.todayChg - b.todayChg).slice(0, 6);
+  const lowVal = [...mkts].sort((a, b) => a.chg2d - b.chg2d).slice(0, 6);
+  wrap.innerHTML = `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <h5 class="text-xs font-semibold text-keyboard-silver/70 mb-2 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-red-500"></span> Most Sold Today</h5>
+        ${sellRows(mkts, mostSold, 'today')}
+      </div>
+      <div>
+        <h5 class="text-xs font-semibold text-keyboard-silver/70 mb-2 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-purple-light"></span> Biggest 1-2 Day Drops · Low Valuation</h5>
+        ${sellRows(mkts, lowVal, '2d')}
+      </div>
+    </div>`;
+}
+
+function sellRows(universe, rows, mode) {
+  if (!universe || universe.length === 0) {
+    return '<p class="text-[11px] text-keyboard-silver/50 py-4 text-center">No live feed yet — loading or unavailable for this market.</p>';
+  }
+  if (rows.length === 0) {
+    return '<p class="text-[11px] text-keyboard-silver/50 py-4 text-center">No movers in this market right now.</p>';
+  }
+  return rows.map(d => {
+    const u = d.pick;
+    const chg = mode === 'today' ? d.todayChg : d.chg2d;
+    const up = chg >= 0;
+    const color = up ? 'text-green-400' : 'text-red-400';
+    const volSurge = mode === 'today' && d.volRatio >= 1.5;
+    return '<div class="flex items-center justify-between py-2 border-b border-keyboard-grey/10 last:border-0">' +
+      '<div class="min-w-0">' +
+        '<p class="text-xs font-semibold text-keyboard-light truncate">' + escapeHtml(u.n) + ' <span class="font-normal text-keyboard-silver/45">' + u.x + '</span></p>' +
+        '<p class="text-[10px] text-keyboard-silver/50">' + (u.x === 'US' ? '$ ' : '₹ ') + nfmt(d.price) + (d.rsi != null ? ' · RSI ' + Math.round(d.rsi) : '') + '</p>' +
+      '</div>' +
+      '<div class="text-right shrink-0">' +
+        '<p class="text-[11px] font-bold ' + color + '">' + (up ? '▲' : '▼') + ' ' + formatPercent(chg) + '</p>' +
+        (volSurge ? '<p class="text-[9px] font-bold text-purple-light">💥 Vol ' + d.volRatio.toFixed(1) + '×</p>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
 function setSignalTab(mode) {
   signalTab = mode;
   const bought = document.getElementById('ssTabBought');
@@ -4776,6 +4895,7 @@ async function init() {
   renderIndicesEdu();
   renderRoadmap();
   renderCandleKB();
+  loadSellerWatch();
   renderWatchlistPanel();
 
   // Load indices, market condition, macro + news ticker (TerminalFeed)
