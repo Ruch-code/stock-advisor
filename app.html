@@ -2423,22 +2423,22 @@ function renderPatternList(patterns) {
 // CANDLESTICK KNOWLEDGE BASE
 // ============================================================
 const CANDLE_KB = [
-  { name: 'Doji', type: 'neutral', desc: 'Tiny or no body — buyers and sellers are dead even. Often signals indecision, and at the end of a move it can warn of a reversal.' },
-  { name: 'Spinning Top', type: 'neutral', desc: 'Small body with long upper and lower wicks. The market is undecided — the next candle usually shows the direction.' },
-  { name: 'Hammer', type: 'bullish', desc: 'Long lower wick, tiny body near the top. Buyers rejected a sell-off — a bullish reversal signal at support.' },
-  { name: 'Shooting Star', type: 'bearish', desc: 'Long upper wick, tiny body near the bottom. Sellers rejected a rally — a bearish reversal signal at resistance.' },
-  { name: 'Bullish Marubozu', type: 'bullish', desc: 'Fat body, almost no wicks — opens at the low and closes at the high. Very strong conviction from buyers.' },
-  { name: 'Bearish Marubozu', type: 'bearish', desc: 'Fat body, almost no wicks — opens at the high and closes at the low. Very strong conviction from sellers.' },
-  { name: 'Bullish Engulfing', type: 'bullish', desc: 'A green candle completely swallows the previous red candle. Buyers took full control — a strong reversal signal.' },
-  { name: 'Bearish Engulfing', type: 'bearish', desc: 'A red candle completely swallows the previous green candle. Sellers took full control — a strong reversal signal.' },
-  { name: 'Piercing Line', type: 'bullish', desc: 'Two candles: opens below the previous low, then closes above its midpoint. Buyers are stepping back in.' },
-  { name: 'Dark Cloud Cover', type: 'bearish', desc: 'Two candles: opens above the previous high, then closes below its midpoint. Sellers are taking over.' },
-  { name: 'Tweezer Bottom', type: 'bullish', desc: 'Two candles with matching lows near support. Sellers failed twice — buying pressure is building.' },
-  { name: 'Tweezer Top', type: 'bearish', desc: 'Two candles with matching highs near resistance. Buyers failed twice — selling pressure is building.' },
-  { name: 'Morning Star', type: 'bullish', desc: 'Three candles: a big red, a small indecision, then a big green. A textbook bottom-reversal pattern.' },
-  { name: 'Evening Star', type: 'bearish', desc: 'Three candles: a big green, a small indecision, then a big red. A textbook top-reversal pattern.' },
-  { name: 'Three White Soldiers', type: 'bullish', desc: 'Three consecutive green candles closing higher each time. Strong bullish continuation momentum.' },
-  { name: 'Three Black Crows', type: 'bearish', desc: 'Three consecutive red candles closing lower each time. Strong bearish continuation momentum.' }
+  { name: 'Doji', type: 'neutral', desc: 'Tiny or no body — buyers and sellers are dead even. Often signals indecision, and at the end of a move it can warn of a reversal.', action: '⚠️ Stay cautious — wait for next candle confirmation before acting.' },
+  { name: 'Spinning Top', type: 'neutral', desc: 'Small body with long upper and lower wicks. The market is undecided — the next candle usually shows the direction.', action: '⚠️ Stay cautious — direction depends on follow-through candle.' },
+  { name: 'Hammer', type: 'bullish', desc: 'Long lower wick, tiny body near the top. Buyers rejected a sell-off — a bullish reversal signal at support.', action: '✅ Good opportunity — buy on confirmation (next candle closes higher) with stop below hammer low.' },
+  { name: 'Shooting Star', type: 'bearish', desc: 'Long upper wick, tiny body near the bottom. Sellers rejected a rally — a bearish reversal signal at resistance.', action: '🔻 Consider exit/short — confirm with next candle closing lower; stop above star high.' },
+  { name: 'Bullish Marubozu', type: 'bullish', desc: 'Fat body, almost no wicks — opens at the low and closes at the high. Very strong conviction from buyers.', action: '✅ Buy now — strong momentum; enter on pullback to 50% of candle body.' },
+  { name: 'Bearish Marubozu', type: 'bearish', desc: 'Fat body, almost no wicks — opens at the high and closes at the low. Very strong conviction from sellers.', action: '🔻 Exit/short now — strong selling pressure; avoid longs until reversal confirmed.' },
+  { name: 'Bullish Engulfing', type: 'bullish', desc: 'A green candle completely swallows the previous red candle. Buyers took full control — a strong reversal signal.', action: '✅ Good opportunity — buy on break above engulfing high; stop below engulfing low.' },
+  { name: 'Bearish Engulfing', type: 'bearish', desc: 'A red candle completely swallows the previous green candle. Sellers took full control — a strong reversal signal.', action: '🔻 Exit/short — sell on break below engulfing low; stop above engulfing high.' },
+  { name: 'Piercing Line', type: 'bullish', desc: 'Two candles: opens below the previous low, then closes above its midpoint. Buyers are stepping back in.', action: '✅ Good opportunity — buy if next candle confirms upward; stop below pattern low.' },
+  { name: 'Dark Cloud Cover', type: 'bearish', desc: 'Two candles: opens above the previous high, then closes below its midpoint. Sellers are taking over.', action: '🔻 Exit/short — confirm with lower close next session; stop above pattern high.' },
+  { name: 'Tweezer Bottom', type: 'bullish', desc: 'Two candles with matching lows near support. Sellers failed twice — buying pressure is building.', action: '✅ Good opportunity — buy on break above tweezer highs; stop below matching lows.' },
+  { name: 'Tweezer Top', type: 'bearish', desc: 'Two candles with matching highs near resistance. Buyers failed twice — selling pressure is building.', action: '🔻 Exit/short — sell on break below tweezer lows; stop above matching highs.' },
+  { name: 'Morning Star', type: 'bullish', desc: 'Three candles: a big red, a small indecision, then a big green. A textbook bottom-reversal pattern.', action: '✅ Buy now — strong reversal confirmed; enter on 3rd candle close with stop below star low.' },
+  { name: 'Evening Star', type: 'bearish', desc: 'Three candles: a big green, a small indecision, then a big red. A textbook top-reversal pattern.', action: '🔻 Exit/short — strong reversal confirmed; sell on 3rd candle close with stop above star high.' },
+  { name: 'Three White Soldiers', type: 'bullish', desc: 'Three consecutive green candles closing higher each time. Strong bullish continuation momentum.', action: '✅ Buy now — powerful uptrend; add on pullbacks to 9/20 EMA.' },
+  { name: 'Three Black Crows', type: 'bearish', desc: 'Three consecutive red candles closing lower each time. Strong bearish continuation momentum.', action: '🔻 Exit/short now — powerful downtrend; avoid catching falling knives.' }
 ];
 
 // SVG pattern diagrams — compact 80x50 viewBox for each classic pattern
@@ -2480,6 +2480,7 @@ function renderCandleKB() {
           </div>
         </div>
         <p class="text-[11px] text-keyboard-silver/60 leading-relaxed">${p.desc}</p>
+        <p class="text-[10px] text-keyboard-silver/45 mt-1">${p.action}</p>
       </div>
     `;
   }).join('');
