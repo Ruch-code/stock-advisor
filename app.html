@@ -2441,22 +2441,48 @@ const CANDLE_KB = [
   { name: 'Three Black Crows', type: 'bearish', desc: 'Three consecutive red candles closing lower each time. Strong bearish continuation momentum.' }
 ];
 
+// SVG pattern diagrams — compact 80x50 viewBox for each classic pattern
+const CANDLE_SVGS = {
+  Doji: `<svg viewBox="0 0 80 50" class="w-20 h-12"><line x1="20" y1="25" x2="60" y2="25" stroke="#9ca3af" stroke-width="1.5"/><line x1="40" y1="15" x2="40" y2="35" stroke="#9ca3af" stroke-width="1.5"/></svg>`,
+  'Spinning Top': `<svg viewBox="0 0 80 50" class="w-20 h-12"><line x1="20" y1="25" x2="20" y2="10" stroke="#9ca3af" stroke-width="1.5"/><line x1="60" y1="25" x2="60" y2="40" stroke="#9ca3af" stroke-width="1.5"/><rect x="18" y="22" width="4" height="6" rx="0.5" fill="#9ca3af"/></svg>`,
+  Hammer: `<svg viewBox="0 0 80 50" class="w-20 h-12"><line x1="40" y1="18" x2="40" y2="45" stroke="#22c55e" stroke-width="1.5"/><rect x="36" y="15" width="8" height="3" rx="0.5" fill="#22c55e"/></svg>`,
+  'Shooting Star': `<svg viewBox="0 0 80 50" class="w-20 h-12"><line x1="40" y1="5" x2="40" y2="32" stroke="#ef4444" stroke-width="1.5"/><rect x="36" y="30" width="8" height="3" rx="0.5" fill="#ef4444"/></svg>`,
+  'Bullish Marubozu': `<svg viewBox="0 0 80 50" class="w-20 h-12"><rect x="20" y="40" width="40" height="10" rx="0.5" fill="#22c55e"/></svg>`,
+  'Bearish Marubozu': `<svg viewBox="0 0 80 50" class="w-20 h-12"><rect x="20" y="0" width="40" height="10" rx="0.5" fill="#ef4444"/></svg>`,
+  'Bullish Engulfing': `<svg viewBox="0 0 80 50" class="w-20 h-12"><rect x="12" y="30" width="24" height="14" rx="0.5" fill="#ef4444"/><rect x="44" y="10" width="24" height="18" rx="0.5" fill="#22c55e"/></svg>`,
+  'Bearish Engulfing': `<svg viewBox="0 0 80 50" class="w-20 h-12"><rect x="12" y="10" width="24" height="18" rx="0.5" fill="#22c55e"/><rect x="44" y="30" width="24" height="14" rx="0.5" fill="#ef4444"/></svg>`,
+  'Piercing Line': `<svg viewBox="0 0 80 50" class="w-20 h-12"><rect x="10" y="30" width="30" height="14" rx="0.5" fill="#ef4444"/><rect x="45" y="18" width="25" height="10" rx="0.5" fill="#22c55e"/></svg>`,
+  'Dark Cloud Cover': `<svg viewBox="0 0 80 50" class="w-20 h-12"><rect x="10" y="10" width="30" height="14" rx="0.5" fill="#22c55e"/><rect x="45" y="22" width="25" height="10" rx="0.5" fill="#ef4444"/></svg>`,
+  'Tweezer Bottom': `<svg viewBox="0 0 80 50" class="w-20 h-12"><line x1="20" y1="22" x2="20" y2="42" stroke="#22c55e" stroke-width="1.5"/><rect x="16" y="22" width="8" height="6" rx="0.5" fill="#22c55e"/><line x1="50" y1="22" x2="50" y2="42" stroke="#22c55e" stroke-width="1.5"/><rect x="46" y="22" width="8" height="6" rx="0.5" fill="#22c55e"/></svg>`,
+  'Tweezer Top': `<svg viewBox="0 0 80 50" class="w-20 h-12"><line x1="20" y1="8" x2="20" y2="28" stroke="#ef4444" stroke-width="1.5"/><rect x="16" y="8" width="8" height="6" rx="0.5" fill="#ef4444"/><line x1="50" y1="8" x2="50" y2="28" stroke="#ef4444" stroke-width="1.5"/><rect x="46" y="8" width="8" height="6" rx="0.5" fill="#ef4444"/></svg>`,
+  'Morning Star': `<svg viewBox="0 0 80 50" class="w-20 h-12"><rect x="6" y="26" width="20" height="10" rx="0.5" fill="#ef4444"/><rect x="30" y="20" width="8" height="4" rx="0.5" fill="#9ca3af"/><rect x="54" y="14" width="20" height="10" rx="0.5" fill="#22c55e"/></svg>`,
+  'Evening Star': `<svg viewBox="0 0 80 50" class="w-20 h-12"><rect x="6" y="14" width="20" height="10" rx="0.5" fill="#22c55e"/><rect x="30" y="20" width="8" height="4" rx="0.5" fill="#9ca3af"/><rect x="54" y="26" width="20" height="10" rx="0.5" fill="#ef4444"/></svg>`,
+  'Three White Soldiers': `<svg viewBox="0 0 80 50" class="w-20 h-12"><rect x="8" y="32" width="18" height="6" rx="0.5" fill="#22c55e"/><rect x="31" y="24" width="18" height="6" rx="0.5" fill="#22c55e"/><rect x="54" y="16" width="18" height="6" rx="0.5" fill="#22c55e"/></svg>`,
+  'Three Black Crows': `<svg viewBox="0 0 80 50" class="w-20 h-12"><rect x="8" y="12" width="18" height="6" rx="0.5" fill="#ef4444"/><rect x="31" y="20" width="18" height="6" rx="0.5" fill="#ef4444"/><rect x="54" y="28" width="18" height="6" rx="0.5" fill="#ef4444"/></svg>`
+};
+
 function renderCandleKB() {
   const list = document.getElementById('candleKBList');
   if (!list) return;
   list.innerHTML = CANDLE_KB.map(p => {
     const color = p.type === 'bullish' ? 'green' : p.type === 'bearish' ? 'red' : 'yellow';
     const tag = p.type === 'bullish' ? 'Bullish' : p.type === 'bearish' ? 'Bearish' : 'Neutral';
+    const svg = CANDLE_SVGS[p.name] || '';
     return `
       <div class="rounded-xl bg-keyboard-dark/50 border border-keyboard-grey/20 p-4 hover:border-purple-glow/40 transition-colors">
-        <div class="flex items-center justify-between gap-2 mb-2">
-          <b class="text-sm text-keyboard-light">${p.name}</b>
-          <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-${color}-500/20 text-${color}-400">${tag}</span>
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div class="flex items-center gap-2">
+            <div class="w-20 h-12 flex-shrink-0 bg-keyboard-black/60 rounded-lg border border-keyboard-grey/20 p-1">${svg}</div>
+            <div>
+              <b class="text-sm text-keyboard-light">${p.name}</b>
+              <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-${color}-500/20 text-${color}-400 ml-2">${tag}</span>
+            </div>
+          </div>
         </div>
         <p class="text-[11px] text-keyboard-silver/60 leading-relaxed">${p.desc}</p>
       </div>
     `;
-}).join('');
+  }).join('');
 }
 
 function showPatternTooltip(event, element) {
