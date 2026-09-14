@@ -856,14 +856,14 @@
             <span class="dd-txt"><b>Daily Paper</b><em>Morning market brief</em></span>
           </button>
 <button type="button" onclick="showSection('oversold')" data-section="oversold" class="dd-item key-press" role="menuitem">
-    <span class="dd-ico">📉</span>
-    <span class="dd-txt"><b>Oversold</b><em>Beaten-down reversal plays</em></span>
-  </button>
-  <button type="button" onclick="showSection('ipo')" data-section="ipo" class="dd-item key-press" role="menuitem">
-    <span class="dd-ico">📝</span>
-    <span class="dd-txt"><b>Indian IPOs</b><em>How to apply & evaluate</em></span>
-  </button>
-</div>
+            <span class="dd-ico">📉</span>
+            <span class="dd-txt"><b>Oversold</b><em>Beaten-down reversal plays</em></span>
+          </button>
+          <button type="button" onclick="showSection('ipo')" data-section="ipo" class="dd-item key-press" role="menuitem">
+            <span class="dd-ico">📝</span>
+            <span class="dd-txt"><b>Indian IPOs</b><em>How to apply &amp; evaluate</em></span>
+          </button>
+        </div>
       </div>
 
       <!-- Stocks group -->
@@ -1044,8 +1044,8 @@
             <h5 class="text-xs font-semibold silver-text mb-2">Lot Size & Pricing</h5>
             <ul class="text-[11px] text-keyboard-silver/60 space-y-1">
               <li>Lot Size: Minimum number of shares you can bid for (e.g., 10, 15, 20 shares).</li>
-              <price-band">Price Band: Range (e.g., ₹100-₹120 per share); final price set via book building.</li>
-              <br="minlot">Cut-off Price: Bid at any price within the band; allotment at cut-off usually increases chances.</li>
+              <li>Price Band: Range (e.g., ₹100-₹120 per share); final price set via book building.</li>
+              <li>Cut-off Price: Bid at any price within the band; allotment at cut-off usually increases chances.</li>
             </ul>
           </div>
           <div>
@@ -5029,7 +5029,7 @@ async function init() {
   // falling back to the dashboard); other sections lazy-load on tab click
   document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
   const lastTab = (function() { try { return localStorage.getItem('stockpulse_last_tab'); } catch (e) { return null; } })();
-  const validTabs = ['dashboard', 'candle', 'desk', 'paper', 'signals', 'oversold', 'trending', 'expertpanel', 'portfolio', 'brokers', 'mutualfunds', 'crypto'];
+  const validTabs = ['dashboard', 'candle', 'desk', 'paper', 'signals', 'oversold', 'trending', 'expertpanel', 'portfolio', 'brokers', 'mutualfunds', 'crypto', 'ipo'];
   const restore = (lastTab && validTabs.indexOf(lastTab) !== -1) ? lastTab : 'dashboard';
   document.getElementById('marketToggle').textContent = state.market === 'US' ? 'US Market' : 'Indian Market';
   if (restore === 'dashboard') {
