@@ -543,9 +543,11 @@
     /* ============================================================
        3D ANIMATIONS
        ============================================================ */
-    /* Section 3D flip-in on every navigation */
+    /* Section 3D flip-in on every navigation (backwards fill: no lingering
+       transform/filter after the animation, otherwise Chrome repaints a tall
+       section as a duplicate layer while scrolling) */
     .section {
-      animation: sec3dIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+      animation: sec3dIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
       transform-origin: 50% 0%;
     }
     @keyframes sec3dIn {
@@ -1022,6 +1024,36 @@
 
     <!-- Indian IPOs Section -->
     <div id="section-ipo" class="section hidden">
+      <!-- Live IPO Board -->
+      <div class="card rounded-2xl p-6 mb-6">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+          <div class="flex items-center gap-3">
+            <h2 class="text-lg font-bold silver-text">📊 Live IPO Board</h2>
+            <span id="ipoLiveMeta" class="text-[10px] text-keyboard-silver/45"></span>
+          </div>
+          <button onclick="loadIpoBoard(true)" class="key-press text-[10px] px-2.5 py-1 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">↻ Refresh</button>
+        </div>
+        <p class="text-[10px] text-keyboard-silver/40 mb-3">Point-in-time list of Indian IPOs — tap any IPO to open its in-depth analysis (booking dates, price band, lot size, financials & verdict).</p>
+
+        <div id="ipoTabBar" class="flex flex-wrap gap-2 mb-4">
+          <button id="ipoTabOpen" data-tab="open" onclick="setIpoTab('open')" class="key-press text-xs px-3 py-1.5 rounded-lg bg-purple-glow/20 text-purple-light font-semibold transition-colors">Booking Open Now</button>
+          <button id="ipoTabUpcoming" data-tab="upcoming" onclick="setIpoTab('upcoming')" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">Upcoming</button>
+          <button id="ipoTabRecent" data-tab="recent" onclick="setIpoTab('recent')" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">Recently Closed</button>
+        </div>
+
+        <div id="ipoStats" class="hidden grid grid-cols-3 gap-2 mb-4"></div>
+
+        <div id="ipoLoading" class="space-y-2">
+          <div class="shimmer rounded-lg h-12"></div>
+          <div class="shimmer rounded-lg h-12"></div>
+          <div class="shimmer rounded-lg h-12"></div>
+        </div>
+        <div id="ipoUnavailable" class="hidden rounded-lg bg-red-500/5 border border-red-500/20 p-3 text-xs text-red-300/80">
+          <span class="font-semibold text-red-300">Live IPO feed not reachable right now.</span> It retries automatically when you open this tab again or hit Refresh.
+        </div>
+        <div id="ipoList" class="space-y-2"></div>
+      </div>
+
       <div class="card rounded-2xl p-6 mb-6">
         <h2 class="text-lg font-bold silver-text mb-2">Indian IPO Guide</h2>
         <p class="text-xs text-keyboard-silver/50 mb-4">Learn how to apply, evaluate, and understand the risks of upcoming IPOs.</p>
@@ -1698,7 +1730,8 @@ const state = {
 // ============================================================
 const API = {
   TERMINAL_FEED: 'https://terminalfeed.io/api',
-  YAHOO_QUOTE: '/functions/proxy'
+  YAHOO_QUOTE: '/functions/proxy',
+  IPOS: '/functions/ipos'
 };
 
 // ============================================================
@@ -2851,6 +2884,7 @@ function showSection(name) {
     if (name === 'expertpanel') loadExpertPanel();
     if (name === 'portfolio') loadPortfolioGrader();
     if (name === 'crypto') loadCrypto();
+    if (name === 'ipo') loadIpoBoard();
   } catch (e) { console.error('section load error', name, e); }
 }
 
@@ -4534,6 +4568,198 @@ function sellRows(universe, rows, mode) {
   }).join('');
 }
 
+// ============================================================
+// LIVE IPO BOARD
+// ============================================================
+const IPO_TTL = 5 * 60 * 1000;
+
+async function loadIpoBoard(force) {
+  const loading = document.getElementById('ipoLoading');
+  const unavail = document.getElementById('ipoUnavailable');
+  const listEl = document.getElementById('ipoList');
+  if (loading) loading.classList.remove('hidden');
+  if (unavail) unavail.classList.add('hidden');
+  if (listEl) listEl.innerHTML = '';
+  if (!force && state.ipo && state.ipoTs && (Date.now() - state.ipoTs) < IPO_TTL) {
+    if (loading) loading.classList.add('hidden');
+    renderIpoBoard();
+    return;
+  }
+  try {
+    const r = await fetchWithTimeout(API.IPOS, {}, 25000);
+    if (!r.ok) throw new Error('ipos-' + r.status);
+    const data = await r.json();
+    if (!data || data.ok === false || !Array.isArray(data.mainboard) || !Array.isArray(data.sme)) throw new Error('ipos-body');
+    state.ipo = data;
+    state.ipoTs = Date.now();
+    if (loading) loading.classList.add('hidden');
+    renderIpoBoard();
+  } catch (e) {
+    console.warn('ipo board unavailable', e);
+    if (loading) loading.classList.add('hidden');
+    if (unavail) unavail.classList.remove('hidden');
+  }
+}
+
+function setIpoTab(tab) {
+  state.ipoTab = tab;
+  ['open', 'upcoming', 'recent'].forEach(t => {
+    const b = document.getElementById('ipoTab' + (t === 'open' ? 'Open' : t === 'upcoming' ? 'Upcoming' : 'Recent'));
+    if (b) b.className = 'key-press text-xs px-3 py-1.5 rounded-lg transition-colors ' +
+      (t === tab ? 'bg-purple-glow/20 text-purple-light font-semibold' : 'bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50');
+  });
+  renderIpoBoard();
+}
+
+function ipoDaysLeft(closeISO) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const get = (p) => (parts.find((x) => x.type === p) || {}).value;
+    const today = Date.UTC(+get('year'), +get('month') - 1, +get('day'));
+    const close = Date.parse(closeISO + 'T18:29:00Z');
+    return Math.max(0, Math.ceil((close - today) / 86400000));
+  } catch (e) { return null; }
+}
+
+function ipoStatCell(label, n, color) {
+  return '<div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-3 text-center">' +
+    '<p class="text-lg font-bold ' + color + ' tabular-nums">' + n + '</p>' +
+    '<p class="text-[10px] text-keyboard-silver/50">' + label + '</p></div>';
+}
+
+function ipoStatusChip(item) {
+  if (item.status === 'OPEN') return '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 whitespace-nowrap">● Booking Open</span>';
+  if (item.status === 'UPCOMING') return '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 whitespace-nowrap">⏳ Upcoming</span>';
+  return '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-keyboard-grey/30 text-keyboard-silver/50 whitespace-nowrap">Closed</span>';
+}
+
+function renderIpoBoard() {
+  const listEl = document.getElementById('ipoList');
+  const statsEl = document.getElementById('ipoStats');
+  const metaEl = document.getElementById('ipoLiveMeta');
+  if (!listEl) return;
+  if (!state.ipo) return;
+
+  const all = [...(state.ipo.mainboard || []), ...(state.ipo.sme || [])];
+  const open = all.filter(i => i.status === 'OPEN');
+  const upcoming = all.filter(i => i.status === 'UPCOMING');
+  const recent = all.filter(i => i.status === 'CLOSED' && i.closeDate)
+    .filter(i => (Date.now() - Date.parse(i.closeDate + 'T18:29:00Z')) < 45 * 24 * 3600 * 1000)
+    .sort((a, b) => (b.closeDate || '').localeCompare(a.closeDate || ''));
+
+  if (statsEl) {
+    statsEl.classList.remove('hidden');
+    statsEl.classList.add('grid');
+    statsEl.innerHTML = ipoStatCell('Booking Open', open.length, 'text-green-400') +
+      ipoStatCell('Upcoming', upcoming.length, 'text-amber-400') +
+      ipoStatCell('Closed · 45 days', recent.length, 'text-keyboard-silver/60');
+  }
+  if (metaEl) metaEl.textContent = 'as of ' + (state.ipo.asOf || '') + ' · ' + state.ipo.source;
+
+  const tab = state.ipoTab || 'open';
+  let rows;
+  if (tab === 'open') rows = [...open].sort((a, b) => (a.closeDate || '').localeCompare(b.closeDate || ''));
+  else if (tab === 'upcoming') rows = [...upcoming].sort((a, b) => (a.openDate || '').localeCompare(b.openDate || ''));
+  else rows = recent.slice(0, 12);
+
+  if (!rows.length) {
+    listEl.innerHTML = '<p class="text-[11px] text-keyboard-silver/50 py-4 text-center">' +
+      (tab === 'open' ? 'No IPOs are accepting bookings right now — check the Upcoming tab.' :
+       tab === 'upcoming' ? 'No upcoming IPOs announced yet.' : 'No IPO has closed in the last 45 days.') +
+      '</p>';
+    return;
+  }
+  listEl.innerHTML = rows.map(ipoRow).join('');
+}
+
+function ipoRow(item) {
+  const slug = item.slug;
+  const open = !!(state.ipoOpen && state.ipoOpen[slug]);
+  const det = state.ipoDetail && state.ipoDetail[slug];
+  const loading = open && det && det.loading;
+  const err = open && det && det.error;
+  const label = item.platform || (item.kind === 'main' ? 'Mainboard' : 'SME');
+  const days = item.status === 'OPEN' && item.closeDate ? ipoDaysLeft(item.closeDate) : null;
+  const meta = [item.dateWindow, item.size, item.priceBand].filter(Boolean).join(' · ');
+  const caret = open ? '▲' : '▼';
+  return '<div class="rounded-xl border border-keyboard-grey/20 bg-keyboard-black/40 overflow-hidden">' +
+    '<button onclick="toggleIpoDetail(' + "'" + slug + "'" + ')" class="w-full text-left p-3 hover:bg-keyboard-black/60 transition-colors">' +
+      '<div class="flex items-center justify-between gap-2">' +
+        '<div class="min-w-0">' +
+          '<p class="text-sm font-bold text-keyboard-light truncate">' + escapeHtml(item.name) + ' <span class="text-[9px] font-normal text-keyboard-silver/45">' + label + '</span></p>' +
+          '<p class="text-[10px] text-keyboard-silver/55 truncate">Bidding ' + meta + '</p>' +
+          (days != null && days > 0 ? '<p class="text-[10px] font-semibold text-green-400/80">Closes in ' + days + (days === 1 ? ' day' : ' days') + '</p>' : '') +
+        '</div>' +
+        '<div class="shrink-0 text-right flex flex-col items-end gap-1">' +
+          ipoStatusChip(item) +
+          '<span class="text-[10px] text-keyboard-silver/40">' + caret + ' analysis</span>' +
+        '</div>' +
+      '</div>' +
+    '</button>' +
+    (loading ? '<div class="p-3 border-t border-keyboard-grey/10"><div class="shimmer rounded h-16"></div></div>' : '') +
+    (err ? '<div class="border-t border-keyboard-grey/10 p-3 text-[11px] text-red-300/80">Analysis could not be loaded right now. <a class="text-purple-light" target="_blank" rel="noopener" href="' + escapeHtml(item.url) + '">Open on IPO Watch ↗</a></div>' : '') +
+    (open && det && det.data ? ipoDetailView(item, det.data) : '') +
+  '</div>';
+}
+
+function ipoDetailView(item, d) {
+  const facts = [];
+  if (d.openDate) facts.push(['Opens', d.openDate]);
+  if (d.closeDate) facts.push(['Closes', d.closeDate]);
+  if (d.priceBand) facts.push(['Price band', d.priceBand]);
+  if (d.issueSize) facts.push(['Issue size', d.issueSize]);
+  if (d.faceValue) facts.push(['Face value', d.faceValue]);
+  if (d.issueType) facts.push(['Issue type', d.issueType]);
+  if (d.listing) facts.push(['Listing', d.listing]);
+  if (d.lotSummary) facts.push(['Min market lot', d.lotSummary]);
+  const objectives = (d.objectives || []).slice(0, 6);
+  return '<div class="border-t border-keyboard-grey/10 p-3 bg-keyboard-black/20">' +
+    '<div class="flex flex-wrap items-center gap-2 mb-3">' +
+      '<h5 class="text-sm font-bold text-keyboard-light flex-1 min-w-0">' + escapeHtml(d.title || item.name) + '</h5>' +
+      (d.verdict ? '<span class="text-[9px] font-bold px-2 py-1 rounded-full bg-purple-glow/15 text-purple-light whitespace-nowrap">' + escapeHtml(d.verdict) + '</span>' : '') +
+    '</div>' +
+    (facts.length ? '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">' + facts.map(f => '<div class="rounded-lg bg-keyboard-black/40 border border-keyboard-grey/10 px-3 py-2"><p class="text-[9px] uppercase tracking-wider text-keyboard-silver/45 mb-0.5">' + f[0] + '</p><p class="text-[11px] text-keyboard-light">' + escapeHtml(f[1]) + '</p></div>').join('') + '</div>' : '') +
+    ipoSection('🏢 About the company', d.about) +
+    ipoSection('💶 Financial performance', d.financials) +
+    (objectives.length ? '<div class="mb-3"><p class="text-[11px] font-semibold silver-text mb-2">🎯 Objects of the Issue</p><ul class="text-[11px] text-keyboard-silver/60 space-y-1">' + objectives.map(o => '<li>· ' + escapeHtml(o.purpose) + (o.amount ? ' — <span class="text-keyboard-light">' + escapeHtml(o.amount) + '</span>' : '') + '</li>').join('') + '</ul></div>' : '') +
+    ipoSection('🧭 Conclusion', d.conclusion) +
+    '<a href="' + escapeHtml(d.url || item.url) + '" target="_blank" rel="noopener" class="key-press inline-block text-[10px] font-bold uppercase tracking-wider text-purple-light/80 border border-purple-glow/30 rounded-lg px-3 py-1.5 hover:bg-purple-glow/15 transition-colors mt-1">Open full analysis ↗</a>' +
+  '</div>';
+}
+
+function ipoSection(label, text) {
+  if (!text) return '';
+  return '<div class="mb-3"><p class="text-[11px] font-semibold silver-text mb-1">' + label + '</p><p class="text-[11px] text-keyboard-silver/60 leading-relaxed">' + escapeHtml(text) + '</p></div>';
+}
+
+async function toggleIpoDetail(slug) {
+  if (!state.ipoOpen) state.ipoOpen = {};
+  if (!state.ipoDetail) state.ipoDetail = {};
+  if (state.ipoOpen[slug]) {
+    state.ipoOpen[slug] = false;
+    renderIpoBoard();
+    return;
+  }
+  state.ipoOpen[slug] = true;
+  if (!state.ipoDetail[slug] || state.ipoDetail[slug].error) {
+    state.ipoDetail[slug] = { loading: true };
+    renderIpoBoard();
+    try {
+      const r = await fetchWithTimeout(API.IPOS + '?detail=' + encodeURIComponent(slug), {}, 20000);
+      if (!r.ok) throw new Error('ipod-' + r.status);
+      const d = await r.json();
+      if (!d || d.ok === false) throw new Error('ipod-body');
+      state.ipoDetail[slug] = { data: d };
+    } catch (e) {
+      console.warn('ipo detail unavailable', e);
+      state.ipoDetail[slug] = { error: true };
+    }
+    renderIpoBoard();
+  } else {
+    renderIpoBoard();
+  }
+}
+
 function setSignalTab(mode) {
   signalTab = mode;
   const bought = document.getElementById('ssTabBought');
@@ -5014,6 +5240,7 @@ async function init() {
   renderRoadmap();
   renderCandleKB();
   loadSellerWatch();
+  loadIpoBoard();
   renderWatchlistPanel();
 
   // Load indices, market condition, macro + news ticker (TerminalFeed)
