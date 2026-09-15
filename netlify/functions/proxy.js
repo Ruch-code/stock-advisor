@@ -281,6 +281,43 @@ async function yahooChart(symbol, interval, range) {
   return lastRes;
 }
 
+// Yahoo v8 chart tunneled through Jina Reader (r.jina.ai) — free and keyless.
+// When Yahoo throttle-blocks the function's own DC IP (getcrumb + chart return
+// 429), the reader fetches the same endpoint from its network and returns the
+// untouched JSON. Used only as a lower-priority tier, never ahead of Yahoo direct.
+async function yahooViaJina(symbol, interval, range) {
+  const qs = `interval=${encodeURIComponent(interval)}&range=${encodeURIComponent(range)}`;
+  // Single pass over hosts — the app retries from the browser (CORS-open) anyway,
+  // so the server tier must stay inside Netlify's 10s sync-function limit.
+  for (const host of YAHOO_HOSTS) {
+    const url = `https://r.jina.ai/https://${host}/v8/finance/chart/${encodeURIComponent(symbol)}?${qs}`;
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 20000);
+    try {
+      const r = await fetch(url, {
+        headers: { 'User-Agent': UA, 'Accept': 'text/plain, application/json, */*', 'X-No-Cache': 'true' },
+        signal: ac.signal
+      });
+      if (!r.ok) { diag.push(`jina ${host} -> ${r.status}`); await sleep(1000); continue; }
+      const txt = await r.text();
+      const start = txt.indexOf('{"chart"');
+      if (start < 0) { diag.push(`jina ${host} -> no json`); continue; }
+      const data = JSON.parse(txt.slice(start));
+      if (data && data.chart && Array.isArray(data.chart.result) && data.chart.result.length) {
+        diag.push(`jina ${host} -> ok (${symbol})`);
+        return { ok: true, json: async () => data };
+      }
+      diag.push(`jina ${host} -> empty result`);
+    } catch (e) {
+      diag.push(`jina ${host} error: ${e.message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+    await sleep(1000);
+  }
+  return { ok: false, text: async () => 'jina tunnel unavailable' };
+}
+
 // Persistent last-known-good store: when every live provider is throttled, the
 // proxy still returns the previous good payload flagged stale (never a dead tile).
 const staleStore = new Map();
@@ -846,9 +883,11 @@ export default async (event, context) => {
     return corsResponse(JSON.stringify(out), 200, { 'Cache-Control': 'public, max-age=15' });
   }
 
-  // Last resort: Yahoo best effort
+  // Last resort: Yahoo best effort (direct, then tunneled through Jina Reader so
+  // a DC-IP throttle on Yahoo doesn't kill the whole chart pipeline).
   try {
-    const res = await yahooChart(symbol, interval, range);
+    let res = await yahooChart(symbol, interval, range);
+    if (!res || !res.ok) res = await yahooViaJina(symbol, interval, range);
     if (res && res.ok) {
       const data = await res.json();
       cacheSet(cacheKey, data);

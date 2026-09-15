@@ -3863,15 +3863,18 @@ let signalChartInst = null;
 
 async function fetchYahooQuoteData(symbol, interval, range) {
   const url = API.YAHOO_QUOTE + '?symbol=' + encodeURIComponent(symbol) + '&interval=' + interval + '&range=' + range;
-  const res = await fetchWithTimeout(url, {}, 15000);
-  const d = await res.json();
+  let d = null;
+  try {
+    const res = await fetchWithTimeout(url, {}, 15000);
+    d = await res.json();
+  } catch (e) { d = null; }
   const r = (d && d.chart && d.chart.result && d.chart.result[0]) || null;
   if (r && r.timestamp && r.indicators && r.indicators.quote && r.indicators.quote[0]) {
     const q = r.indicators.quote[0];
     const o = q.open || [], h = q.high || [], l = q.low || [], c = q.close || [], v = q.volume || [];
     return r.timestamp.map((t, i) => ({
       time: t, open: o[i] ?? 0, high: h[i] ?? 0, low: l[i] ?? 0, close: c[i] ?? 0, volume: v[i] ?? 0
-    }));
+    })).filter(c => c.time && c.close > 0);
   }
   if (/^\^/.test(symbol) && r && r.meta && r.meta.regularMarketPrice != null) {
     const t = r.meta.regularMarketTime;
@@ -3882,9 +3885,15 @@ async function fetchYahooQuoteData(symbol, interval, range) {
     ];
   }
 
-  // Server fetch failed (rate-gated / live sources down). Fall back to browser-direct
+  // Server fetch failed (rate-gated / live sources down). Fall back to the Jina
+  // reader tunnel (browser fetch, CORS-open, exact Yahoo v8 JSON), then browser
   // JSONP — the v8 chart endpoint (no-crumb, callback-supported) works from a
   // residential IP; v7 quote (current price only) as the last resort.
+  const viaJina = await jinaChart(symbol, interval, range).catch(() => null);
+  if (viaJina && viaJina.length >= 2) {
+    state.browserDirect.add(symbol);
+    return viaJina;
+  }
   const direct = await yahooChartJsonp(symbol, interval, range).catch(() => null);
   if (direct && direct.length >= 2) {
     state.browserDirect.add(symbol);
@@ -3902,6 +3911,33 @@ async function fetchYahooQuoteData(symbol, interval, range) {
       { time: t - 86400, open: prev, high: Math.max(cur, prev), low: Math.min(cur, prev), close: prev, volume: 0 },
       { time: t,         open: cur,  high: cur, low: cur, close: cur, volume: 0 }
     ];
+  }
+  return null;
+}
+
+// Jina Reader tunnels the Yahoo chart endpoint (free, CORS-open — echoes any
+// origin) and returns the untouched v8 JSON as plain text. Used as a browser-side
+// fallback when the server->Yahoo path is throttled from datacenter IPs.
+async function jinaChart(symbol, interval, range) {
+  const hosts = ['query2.finance.yahoo.com', 'query1.finance.yahoo.com'];
+  for (const host of hosts) {
+    try {
+      const url = 'https://r.jina.ai/https://' + host + '/v8/finance/chart/' +
+        encodeURIComponent(symbol) + '?interval=' + encodeURIComponent(interval) + '&range=' + encodeURIComponent(range);
+      const res = await fetchWithTimeout(url, {}, 15000);
+      const body = await res.text();
+      const start = body.indexOf('{"chart"');
+      if (start < 0) continue;
+      const d = JSON.parse(body.slice(start));
+      const r = d && d.chart && d.chart.result && d.chart.result[0];
+      if (r && r.timestamp && r.indicators && r.indicators.quote && r.indicators.quote[0]) {
+        const q = r.indicators.quote[0];
+        const o = q.open || [], h = q.high || [], l = q.low || [], c = q.close || [], v = q.volume || [];
+        return r.timestamp.map((t, i) => ({
+          time: t, open: o[i] ?? 0, high: h[i] ?? 0, low: l[i] ?? 0, close: c[i] ?? 0, volume: v[i] ?? 0
+        })).filter(c => c.time && c.close > 0);
+      }
+    } catch (e) { /* try next host */ }
   }
   return null;
 }
@@ -3929,7 +3965,7 @@ async function yahooChartJsonp(symbol, interval, range, timeoutMs) {
     const o = q.open || [], h = q.high || [], l = q.low || [], c = q.close || [], v = q.volume || [];
     return r.timestamp.map((t, i) => ({
       time: t, open: o[i] ?? 0, high: h[i] ?? 0, low: l[i] ?? 0, close: c[i] ?? 0, volume: v[i] ?? 0
-    }));
+    })).filter(c => c.time && c.close > 0);
   });
 }
 
@@ -4195,6 +4231,13 @@ function renderWatchlistPanel() {
   if (!cards) return;
   renderAllWatchCards();
   list.forEach(sym => { if (!watchCache[sym]) loadWatchChart(sym); });
+  if (!window._watchRetryScheduled) {
+    window._watchRetryScheduled = true;
+    setTimeout(() => {
+      window._watchRetryScheduled = false;
+      watchList().filter(sym => !(watchCache[sym] && watchCache[sym].analysis)).forEach(sym => loadWatchChart(sym));
+    }, 90000);
+  }
 }
 
 function skeletonWatchHTML() {
@@ -4239,8 +4282,9 @@ function analysisOf(candles) {
   const last = candles[candles.length - 1];
   const prev = candles[candles.length - 2];
   const price = last.close;
-  const chg1d = prev ? (price / prev.close - 1) * 100 : 0;
-  const chg2d = candles[candles.length - 3] ? (price / candles[candles.length - 3].close - 1) * 100 : chg1d;
+  const chg1d = prev && prev.close ? (price / prev.close - 1) * 100 : 0;
+  const c3 = candles[candles.length - 3];
+  const chg2d = c3 && c3.close ? (price / c3.close - 1) * 100 : chg1d;
   const sma20 = closes.slice(-20).reduce((a, b) => a + b, 0) / Math.min(20, closes.length);
   const rsi = rsiFromCloses(closes);
   const atrWindow = Math.min(14, candles.length - 1);
@@ -4278,11 +4322,21 @@ function analysisOf(candles) {
 async function loadWatchChart(sym) {
   try {
     const candles = await fetchYahooQuoteData(sym, '1d', '6mo');
-    const ok = candles && candles.length >= 20;
-    if (!ok) { watchCache[sym] = null; renderAllWatchCards(); return; }
-    const patMap = {};
-    CandlePatterns.detect(candles).forEach(p => { (patMap[p.index] = patMap[p.index] || []).push(p); });
-    watchCache[sym] = { candles, patMap, analysis: analysisOf(candles) };
+    if (candles && candles.length >= 20) {
+      const patMap = {};
+      CandlePatterns.detect(candles).forEach(p => { (patMap[p.index] = patMap[p.index] || []).push(p); });
+      watchCache[sym] = { candles, patMap, analysis: analysisOf(candles), liveOnly: false };
+    } else if (candles && candles.length >= 2) {
+      const last = candles[candles.length - 1];
+      const prev = candles[candles.length - 2];
+      watchCache[sym] = {
+        candles, analysis: null, liveOnly: true,
+        livePrice: last.close,
+        liveChg: prev && prev.close ? (last.close / prev.close - 1) * 100 : 0
+      };
+    } else {
+      watchCache[sym] = null;
+    }
     renderAllWatchCards();
   } catch (e) { watchCache[sym] = null; renderAllWatchCards(); }
 }
@@ -4315,6 +4369,22 @@ function watchCardHTML(sym) {
     return '<div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-3">' +
       '<p class="text-xs font-bold text-keyboard-light mb-2">' + escapeHtml(watchName(sym)) + '</p>' +
       '<p class="text-[10px] text-yellow-400/80">No price feed for <b>' + escapeHtml(sym) + '</b> right now (free NSE feed gated). Click the tag above to remove it.</p></div>';
+  }
+  if (d.liveOnly) {
+    const chg = d.liveChg;
+    const col = chg >= 0 ? 'text-green-400' : 'text-red-400';
+    const ar = chg >= 0 ? '▲' : '▼';
+    return '<div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-3 watch-card">' +
+      '<div class="flex items-center justify-between flex-wrap gap-1 mb-1">' +
+        '<div>' +
+          '<p class="text-xs font-bold text-keyboard-light">' + escapeHtml(watchName(sym)) + ' <span class="text-[9px] font-normal text-keyboard-silver/50">' + escapeHtml(sym) + '</span>' +
+            '<button onclick="refreshWatch(\'' + sym + '\')" class="key-press ml-1 text-[9px] text-purple-light/70 hover:text-purple-light" title="Refresh chart">⟳</button></p>' +
+          '<p class="text-[10px]"><span class="' + col + ' tabular-nums font-bold">' + ar + ' ' + watchCur(sym) + formatNumber(d.livePrice) + '</span> <span class="' + col + ' tabular-nums">(' + formatPercent(chg) + ')</span></p>' +
+        '</div>' +
+        '<span class="text-[9px] px-2 py-0.5 rounded font-bold border border-yellow-500/30 bg-yellow-500/10 text-yellow-400">LIVE</span>' +
+      '</div>' +
+      '<p class="mt-1 text-[9px] text-keyboard-silver/50 leading-relaxed">Live snapshot — the free candle feed is throttled just now, so deep analysis has paused. Tap ⟳ to retry; it auto-retries too.</p>' +
+    '</div>';
   }
   const candles = d.candles, an = d.analysis;
   const N = 45, W2 = 360, H2 = 150;
