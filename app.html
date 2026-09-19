@@ -1541,6 +1541,33 @@
       </div>
     </div>
 
+
+<script>
+/* IST session clock + India VIX (keyless, free, no paid feed) — honest local-time session window, last-close VIX via ^INDIAVIX */
+(function indiaClock(){
+  var clk=document.getElementById('sessionClock'), vg=document.getElementById('vixGauge');
+  if(!clk) return;
+  function fmt(n){ return (n<10?'0':'')+n; }
+  function tick(){
+    var d=new Date();
+    var ist=new Date(d.toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));
+    var h=ist.getHours(), m=ist.getMinutes(), sec=ist.getSeconds();
+    var day=ist.getDay(), t=h*60+m;
+    var open=day>=1&&day<=5&&t>=555&&t<=930;
+    clk.textContent=fmt(h)+':'+fmt(m)+':'+fmt(sec)+' IST'+(open?' · OPEN':'(closed)');
+  }
+  tick(); setInterval(tick,1000);
+  if(vg){
+    try{
+      (window.fetchYahooQuoteData||function(){}).call(window,'^INDIAVIX','1d','5d').then(function(c){
+        var d=c&&c.length?c[c.length-1]:null;
+        if(d&&d.c) vg.textContent=d.c.toFixed(2)+' (last close)';
+      }).catch(function(){ vg.textContent=vg.getAttribute('data-fallback')||'—'; });
+    }catch(e){ vg.textContent='—'; }
+  }
+})();
+</script>
+
     <div id="section-portfolio" class="section hidden">
       <div class="card rounded-2xl p-6 mb-6">
         <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
