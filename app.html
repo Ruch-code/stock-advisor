@@ -2294,6 +2294,11 @@ function setCache(key, data) {
   state.cacheTime.set(key, Date.now());
 }
 
+function clearCache(key) {
+  state.cache.delete(key);
+  state.cacheTime.delete(key);
+}
+
 function formatNumber(num) {
   if (num === null || num === undefined) return '--';
   if (typeof num === 'string') return num;
@@ -2336,13 +2341,16 @@ async function fetchTerminalFeed() {
   if (cached) return cached;
 
   try {
-    const res = await fetchWithTimeout(`${API.TERMINAL_FEED}/stocks`);
-    if (!res.ok) throw new Error('API error');
+    const res = await fetchWithTimeout(`${API.TERMINAL_FEED}/stocks`, {
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store'
+    });
+    if (!res.ok) throw new Error('API error: ' + res.status);
     const data = await res.json();
     setCache('terminalFeed', data);
     return data;
   } catch (e) {
-    console.warn('TerminalFeed API unavailable, using fallback data');
+    console.warn('TerminalFeed API unavailable:', e.message);
     return null;
   }
 }
@@ -3486,6 +3494,10 @@ if (document.readyState === 'loading') {
 async function loadNewsTicker() {
   try {
     const india = state.market !== 'US';
+    // Clear cache to force fresh fetch
+    clearCache('terminalFeed');
+    clearCache('tf_economic-data');
+    clearCache('tf_fear-greed');
     const [feed, econ, fear, indiaNews] = await Promise.all([
       fetchTerminalFeed().catch(() => null),
       fetchTerminalFeedEndpoint('economic-data').catch(() => null),
