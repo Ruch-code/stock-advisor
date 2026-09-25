@@ -21,6 +21,8 @@ exports.handler = async function (event) {
     let data;
     if (route === 'pcr') data = await nseFeed('option-chain-indices?symbol=NIFTY');
     else if (route === 'delivery') data = await nseFeed('historical/securityArchives?from=01-01-2026&to=19-09-2026&symbol=RELIANCE');
+    else if (route === 'topactives') data = await nseFeed('live-analysis-most-active-securities?index=sec_volume');
+    else if (route === 'losers') data = await nseFeed('live-analysis-variations?index=losers');
     else return { statusCode: 400, headers: cors, body: 'unknown route' };
     const out = { gate: true, ok: true, ts: Date.now(), data };
     return { statusCode: 200, headers: cors, body: JSON.stringify(out) };
