@@ -1675,28 +1675,39 @@
 
 <script>
 /* IST session clock + India VIX (keyless, free, no paid feed) — honest local-time session window, last-close VIX via ^INDIAVIX */
-(function indiaClock(){
+function initIndiaClock(){
   var clk=document.getElementById('sessionClock'), vg=document.getElementById('vixGauge');
-  if(!clk) return;
+  if(!clk){ console.warn('sessionClock element not found'); return; }
   function fmt(n){ return (n<10?'0':'')+n; }
   function tick(){
-    var d=new Date();
-    var ist=new Date(d.toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));
-    var h=ist.getHours(), m=ist.getMinutes(), sec=ist.getSeconds();
-    var day=ist.getDay(), t=h*60+m;
-    var open=day>=1&&day<=5&&t>=555&&t<=930;
-    clk.textContent=fmt(h)+':'+fmt(m)+':'+fmt(sec)+' IST'+(open?' · OPEN':'(closed)');
+    try{
+      var d=new Date();
+      var ist=new Date(d.toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));
+      var h=ist.getHours(), m=ist.getMinutes(), sec=ist.getSeconds();
+      var day=ist.getDay(), t=h*60+m;
+      var open=day>=1&&day<=5&&t>=555&&t<=930;
+      clk.textContent=fmt(h)+':'+fmt(m)+':'+fmt(sec)+' IST'+(open?' \u00b7 OPEN':'(closed)');
+    } catch(e) {
+      console.error('sessionClock tick error:', e);
+    }
   }
   tick(); setInterval(tick,1000);
+  var vg=document.getElementById('vixGauge');
   if(vg){
     try{
       (window.fetchYahooQuoteData||function(){}).call(window,'^INDIAVIX','1d','5d').then(function(c){
         var d=c&&c.length?c[c.length-1]:null;
         if(d&&d.c) vg.textContent=d.c.toFixed(2)+' (last close)';
-      }).catch(function(){ vg.textContent=vg.getAttribute('data-fallback')||'—'; });
-    }catch(e){ vg.textContent='—'; }
+        else vg.textContent='\u2014';
+      }).catch(function(){ vg.textContent=vg.getAttribute('data-fallback')||'\u2014'; });
+    }catch(e){ vg.textContent='\u2014'; }
   }
-})();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initIndiaClock);
+} else {
+  initIndiaClock();
+}
 </script>
 
     <div id="section-portfolio" class="section hidden">
@@ -2575,62 +2586,74 @@ function renderIndices(feedData, economicData, fearGreed) {
   const loading = document.getElementById('indicesLoading');
   if (loading) loading.style.display = 'none';
 
-  // Map TerminalFeed rows by symbol
-  const rows = (feedData && Array.isArray(feedData.data)) ? feedData.data : [];
-  const bySym = {};
-  rows.forEach(r => { bySym[r.symbol] = r; });
+  try {
+    // Map TerminalFeed rows by symbol
+    const rows = (feedData && Array.isArray(feedData.data)) ? feedData.data : [];
+    const bySym = {};
+    rows.forEach(r => { bySym[r.symbol] = r; });
 
-  const US_INDEX_MAP = [
-    { name: 'S&P 500', sym: 'SPY' },
-    { name: 'NASDAQ', sym: 'QQQ' },
-    { name: 'DOW', sym: 'DIA' },
-    { name: 'Russell 2000', sym: 'IWM' }
-  ];
-
-  let indices;
-  let conditionData = [];
-
-  if (state.market === 'US') {
-    indices = US_INDEX_MAP.map(m => {
-      const live = bySym[m.sym];
-      if (live) {
-        return {
-          name: m.name, sym: m.sym, price: live.price, change: live.change_percent,
-          stale: live.stale, ageSeconds: live.age_seconds
-        };
-      }
-      return { name: m.name, sym: m.sym, price: null, change: null, stale: true, ageSeconds: null };
-    });
-    conditionData = US_INDEX_MAP.map(m => bySym[m.sym]).filter(Boolean);
-  } else {
-    // TerminalFeed is US-centric; Indian indices come straight from the proxy
-    // (Yahoo NSE feed, no crumb required) — fetch in the background, upgrade
-    // tiles as soon as live prices arrive.
-    const IN_MAP = [
-      { name: 'NIFTY 50', sym: 'NIFTY', yahoo: '^NSEI' },
-      { name: 'SENSEX', sym: 'SENSEX', yahoo: '^BSESN' },
-      { name: 'NIFTY Bank', sym: 'BANKNIFTY', yahoo: '^NSEBANK' },
-      { name: 'India VIX', sym: 'INDVIX', yahoo: '^INDIAVIX' }
+    const US_INDEX_MAP = [
+      { name: 'S&P 500', sym: 'SPY' },
+      { name: 'NASDAQ', sym: 'QQQ' },
+      { name: 'DOW', sym: 'DIA' },
+      { name: 'Russell 2000', sym: 'IWM' }
     ];
-    indices = IN_MAP.map(({ name, sym }) => ({
-      name, sym, price: null, change: null, stale: true, isIndia: true
-    }));
-    conditionData = [];
-    loadIndiaIndices(IN_MAP);
-  }
 
-  // Render index tiles
-  grid.innerHTML = indices.map(idx => {
-    if (idx.price === null) {
-      return idx.isIndia ? idxTileUnavailable(idx.name, idx.sym) : idxTileSkeleton(idx.name);
+    let indices;
+    let conditionData = [];
+
+    if (state.market === 'US') {
+      indices = US_INDEX_MAP.map(m => {
+        const live = bySym[m.sym];
+        if (live) {
+          return {
+            name: m.name, sym: m.sym, price: live.price, change: live.change_percent,
+            stale: live.stale, ageSeconds: live.age_seconds
+          };
+        }
+        return { name: m.name, sym: m.sym, price: null, change: null, stale: true, ageSeconds: null };
+      });
+      conditionData = US_INDEX_MAP.map(m => bySym[m.sym]).filter(Boolean);
+    } else {
+      const IN_MAP = [
+        { name: 'NIFTY 50', sym: 'NIFTY', yahoo: '^NSEI' },
+        { name: 'SENSEX', sym: 'SENSEX', yahoo: '^BSESN' },
+        { name: 'NIFTY Bank', sym: 'BANKNIFTY', yahoo: '^NSEBANK' },
+        { name: 'India VIX', sym: 'INDVIX', yahoo: '^INDIAVIX' }
+      ];
+      indices = IN_MAP.map(({ name, sym }) => ({
+        name, sym, price: null, change: null, stale: true, isIndia: true
+      }));
+      conditionData = [];
+      loadIndiaIndices(IN_MAP);
     }
-    return idxTile(idx.name, idx.sym, idx.price, idx.change, !!idx.stale);
-  }).join('');
 
-  // Macro condition: sentiment score from real global data
-  document.getElementById('macroStrip').innerHTML = renderMacroStrip(economicData, fearGreed);
-  const macro = renderCondition(conditionData, economicData, fearGreed);
-  renderMarketStatus(macro);
+    // Render index tiles
+    grid.innerHTML = indices.map(idx => {
+      if (idx.price === null) {
+        return idx.isIndia ? idxTileUnavailable(idx.name, idx.sym) : idxTileSkeleton(idx.name);
+      }
+      return idxTile(idx.name, idx.sym, idx.price, idx.change, !!idx.stale);
+    }).join('');
+
+    // Macro condition: sentiment score from real global data
+    document.getElementById('macroStrip').innerHTML = renderMacroStrip(economicData, fearGreed);
+    const macro = renderCondition(conditionData, economicData, fearGreed);
+    renderMarketStatus(macro);
+  } catch (e) {
+    console.error('renderIndices error:', e);
+    // Fallback: show error state in grid
+    const grid = document.getElementById('indicesGrid');
+    grid.innerHTML = `
+      <div class="col-span-full text-center py-6 text-keyboard-silver/50">
+        <p class="font-semibold text-red-400/80">Unable to load indices</p>
+        <p class="text-[10px] text-keyboard-silver/50 mt-1">The market data feed is temporarily unavailable. Please try refreshing.</p>
+        <button onclick="loadNewsTicker()" class="key-press mt-3 text-[10px] px-3 py-1.5 rounded-lg bg-purple-glow/20 text-purple-light border border-purple-glow/30 hover:bg-purple-glow/30 transition-colors">Retry</button>
+      </div>
+    `;
+    const loading = document.getElementById('indicesLoading');
+    if (loading) loading.style.display = 'none';
+  }
 }
 
 async function loadIndiaIndices(IN_MAP) {
@@ -3895,18 +3918,27 @@ function fmtCd(ms) {
 }
 
 function renderClock() {
-  const nse = clockState('NSE'), us = clockState('US');
-  const now = Date.now();
-  document.getElementById('nseStatus').className = 'text-[11px] font-bold py-1 px-3 rounded-full ' + nse.cls;
-  document.getElementById('nseStatus').textContent = nse.label;
-  document.getElementById('nseTime').textContent = nse.timeStr;
-  document.getElementById('nseCountdownLabel').textContent = nse.countLabel + ':';
-  document.getElementById('nseCountdown').textContent = nse.target ? fmtCd(nse.target - now) : '—';
-  document.getElementById('usStatus').className = 'text-[11px] font-bold py-1 px-3 rounded-full ' + us.cls;
-  document.getElementById('usStatus').textContent = us.label;
-  document.getElementById('usTime').textContent = us.timeStr;
-  document.getElementById('usCountdownLabel').textContent = us.countLabel + ':';
-  document.getElementById('usCountdown').textContent = us.target ? fmtCd(us.target - now) : '—';
+  try {
+    const nse = clockState('NSE'), us = clockState('US');
+    const now = Date.now();
+    document.getElementById('nseStatus').className = 'text-[11px] font-bold py-1 px-3 rounded-full ' + nse.cls;
+    document.getElementById('nseStatus').textContent = nse.label;
+    document.getElementById('nseTime').textContent = nse.timeStr;
+    document.getElementById('nseCountdownLabel').textContent = nse.countLabel + ':';
+    document.getElementById('nseCountdown').textContent = nse.target ? fmtCd(nse.target - now) : '—';
+    document.getElementById('usStatus').className = 'text-[11px] font-bold py-1 px-3 rounded-full ' + us.cls;
+    document.getElementById('usStatus').textContent = us.label;
+    document.getElementById('usTime').textContent = us.timeStr;
+    document.getElementById('usCountdownLabel').textContent = us.countLabel + ':';
+    document.getElementById('usCountdown').textContent = us.target ? fmtCd(us.target - now) : '—';
+  } catch (e) {
+    console.error('renderClock error:', e);
+    // Fallback: show basic time
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'UTC' });
+    document.getElementById('nseTime').textContent = '--:--:--';
+    document.getElementById('usTime').textContent = '--:--:--';
+  }
 }
 
 // ============================================================
