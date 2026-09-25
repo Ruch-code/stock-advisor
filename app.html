@@ -600,6 +600,13 @@
       from { opacity: 0; transform: perspective(1200px) rotateX(7deg) translateY(20px); filter: blur(3px); }
       to   { opacity: 1; transform: perspective(1200px) rotateX(0deg) translateY(0); filter: blur(0); }
     }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(100%); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slide-up {
+      animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
     /* Tilt-on-hover cards (opt-in via data-tilt) */
     [data-tilt] {
       transform-style: preserve-3d;
@@ -1112,6 +1119,24 @@
           <button id="ipoTabOpen" data-tab="open" onclick="setIpoTab('open')" class="key-press text-xs px-3 py-1.5 rounded-lg bg-purple-glow/20 text-purple-light font-semibold transition-colors">Booking Open Now</button>
           <button id="ipoTabUpcoming" data-tab="upcoming" onclick="setIpoTab('upcoming')" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">Upcoming</button>
           <button id="ipoTabRecent" data-tab="recent" onclick="setIpoTab('recent')" class="key-press text-xs px-3 py-1.5 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">Recently Closed</button>
+        </div>
+
+        <!-- Filter & Sort Bar -->
+        <div id="ipoFilterBar" class="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20">
+          <span class="text-[10px] text-keyboard-silver/50 mr-1">Filter:</span>
+          <button id="ipoFilterTop" data-filter="top" onclick="setIpoFilter('top')" class="key-press text-xs px-2.5 py-1 rounded-lg bg-purple-glow/20 text-purple-light font-semibold transition-colors">🔥 Top Ranked</button>
+          <button id="ipoFilterOpen" data-filter="open" onclick="setIpoFilter('open')" class="key-press text-xs px-2.5 py-1 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">Bidding Open</button>
+          <button id="ipoFilterMain" data-filter="mainboard" onclick="setIpoFilter('mainboard')" class="key-press text-xs px-2.5 py-1 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">Mainboard</button>
+          <button id="ipoFilterSme" data-filter="sme" onclick="setIpoFilter('sme')" class="key-press text-xs px-2.5 py-1 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50 transition-colors">SME</button>
+          <div class="flex-1"></div>
+          <span class="text-[10px] text-keyboard-silver/50 mr-1">Sort:</span>
+          <select id="ipoSortSelect" onchange="setIpoSort(this.value)" class="text-xs px-2.5 py-1 rounded-lg bg-keyboard-grey/30 text-keyboard-silver/70 border border-keyboard-grey/40 focus:outline-none focus:border-purple-glow/50">
+            <option value="quality">Quality Score ↓</option>
+            <option value="gmp">GMP ↓</option>
+            <option value="subscription">Subscription ↓</option>
+            <option value="closeDate">Closing Soon</option>
+            <option value="listing">Listing Date</option>
+          </select>
         </div>
 
         <div id="ipoStats" class="hidden grid grid-cols-3 gap-2 mb-4"></div>
@@ -1987,7 +2012,10 @@ const state = {
   alertQuoteCache: new Map(),
   niftyLive: false,
   roadmapTick: 0,
-  browserDirect: new Set()
+  browserDirect: new Set(),
+  ipoTab: 'open',
+  ipoFilter: 'all',
+  ipoSort: 'quality'
 };
 
 // ============================================================
@@ -4983,6 +5011,21 @@ function setIpoTab(tab) {
   renderIpoBoard();
 }
 
+function setIpoFilter(filter) {
+  state.ipoFilter = filter;
+  ['top', 'open', 'mainboard', 'sme'].forEach(f => {
+    const b = document.getElementById('ipoFilter' + (f === 'top' ? 'Top' : f === 'open' ? 'Open' : f === 'mainboard' ? 'Main' : 'Sme'));
+    if (b) b.className = 'key-press text-xs px-2.5 py-1 rounded-lg transition-colors ' +
+      (f === filter ? 'bg-purple-glow/20 text-purple-light font-semibold' : 'bg-keyboard-grey/30 text-keyboard-silver/60 hover:bg-keyboard-grey/50');
+  });
+  renderIpoBoard();
+}
+
+function setIpoSort(sort) {
+  state.ipoSort = sort;
+  renderIpoBoard();
+}
+
 function ipoDaysLeft(closeISO) {
   try {
     const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -4991,6 +5034,119 @@ function ipoDaysLeft(closeISO) {
     const close = Date.parse(closeISO + 'T18:29:00Z');
     return Math.max(0, Math.ceil((close - today) / 86400000));
   } catch (e) { return null; }
+}
+
+function formatINR(num) {
+  if (num == null || isNaN(num)) return '—';
+  const n = Number(num);
+  if (n >= 10000000) return '₹' + (n / 10000000).toFixed(2) + ' Cr';
+  if (n >= 100000) return '₹' + (n / 100000).toFixed(2) + ' L';
+  return '₹' + n.toLocaleString('en-IN');
+}
+
+function calculateIPOQualityScore(item, detail) {
+  let score = 50;
+  try {
+    if (detail?.peRatio && detail.sectorPE) {
+      const peRatio = parseFloat(detail.peRatio);
+      const sectorPE = parseFloat(detail.sectorPE);
+      if (peRatio > 0 && sectorPE > 0) {
+        if (peRatio < sectorPE * 0.8) score += 15;
+        else if (peRatio < sectorPE) score += 10;
+        else if (peRatio > sectorPE * 1.3) score -= 10;
+        else score -= 5;
+      }
+    }
+    if (detail?.ofsPercent) {
+      const ofs = parseFloat(detail.ofsPercent);
+      if (ofs > 50) score -= 15;
+      else if (ofs > 30) score -= 5;
+      else score += 5;
+    }
+    if (detail?.roce) {
+      const roce = parseFloat(detail.roce);
+      if (roce > 25) score += 10;
+      else if (roce > 15) score += 8;
+      else if (roce > 10) score += 3;
+      else score -= 5;
+    }
+    if (detail?.revenueGrowth3yr) {
+      const growth = parseFloat(detail.revenueGrowth3yr);
+      if (growth > 20) score += 10;
+      else if (growth > 15) score += 8;
+      else if (growth > 10) score += 5;
+      else score -= 3;
+    }
+    if (detail?.debtToEquity) {
+      const de = parseFloat(detail.debtToEquity);
+      if (de < 0.3) score += 8;
+      else if (de < 0.5) score += 5;
+      else if (de > 1) score -= 8;
+      else if (de > 0.5) score -= 3;
+    }
+    if (detail?.promoterHolding) {
+      const ph = parseFloat(detail.promoterHolding);
+      if (ph > 60) score += 5;
+      else if (ph < 40) score -= 5;
+    }
+    if (detail?.fiiDiiHoldingChange) {
+      const change = parseFloat(detail.fiiDiiHoldingChange);
+      if (change > 5) score += 5;
+      else if (change > 0) score += 2;
+      else if (change < -5) score -= 5;
+    }
+  } catch (e) {}
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function getQualityBadge(score) {
+  if (score >= 80) return '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">🏆 Top Pick (High Quality)</span>';
+  if (score >= 60) return '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">⚡ Listing Gain Potential</span>';
+  return '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400">⚠️ Overvalued</span>';
+}
+
+function getListingSentimentBadge(detail) {
+  if (!detail) return '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-keyboard-grey/30 text-keyboard-silver/50">🔴 Risk of Discount Listing</span>';
+  let sentiment = 'neutral';
+  try {
+    const gmp = detail?.gmp ? parseFloat(detail.gmp.replace(/[^0-9.-]/g, '')) : 0;
+    const subscription = detail?.subscription ? parseFloat(detail.subscription) : 0;
+    const peRatio = detail?.peRatio ? parseFloat(detail.peRatio) : 0;
+    const sectorPE = detail?.sectorPE ? parseFloat(detail.sectorPE) : 0;
+    
+    let score = 0;
+    if (gmp > 30) score += 30;
+    else if (gmp > 15) score += 15;
+    else if (gmp > 0) score += 5;
+    else if (gmp < 0) score -= 15;
+    
+    if (subscription > 100) score += 20;
+    else if (subscription > 50) score += 15;
+    else if (subscription > 10) score += 10;
+    else if (subscription > 1) score += 5;
+    
+    if (sectorPE > 0 && peRatio > 0 && peRatio < sectorPE * 0.9) score += 10;
+    else if (sectorPE > 0 && peRatio > sectorPE * 1.2) score -= 10;
+    
+    if (score >= 35) sentiment = 'premium';
+    else if (score >= 15) sentiment = 'flat';
+    else sentiment = 'discount';
+  } catch (e) { sentiment = 'discount'; }
+  
+  const badges = {
+    premium: '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">🟢 Expecting Premium (+15-25%)</span>',
+    flat: '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">🟡 Flat / Par Listing</span>',
+    discount: '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400">🔴 Risk of Discount Listing</span>'
+  };
+  return badges[sentiment];
+}
+
+function formatINR(num) {
+  if (num == null || isNaN(num)) return '—';
+  const n = Number(num);
+  if (n >= 10000000) return '₹' + (n / 10000000).toFixed(2) + ' Cr';
+  if (n >= 100000) return '₹' + (n / 100000).toFixed(2) + ' L';
+  return '₹' + n.toLocaleString('en-IN');
 }
 
 function ipoStatCell(label, n, color) {
@@ -5030,9 +5186,51 @@ function renderIpoBoard() {
 
   const tab = state.ipoTab || 'open';
   let rows;
-  if (tab === 'open') rows = [...open].sort((a, b) => (a.closeDate || '').localeCompare(b.closeDate || ''));
-  else if (tab === 'upcoming') rows = [...upcoming].sort((a, b) => (a.openDate || '').localeCompare(b.openDate || ''));
+  if (tab === 'open') rows = [...open];
+  else if (tab === 'upcoming') rows = [...upcoming];
   else rows = recent.slice(0, 12);
+
+  // Apply filter
+  const filter = state.ipoFilter || 'all';
+  if (filter === 'top') {
+    rows = rows.filter(i => calculateIPOQualityScore(i, null) >= 60);
+  } else if (filter === 'open') {
+    rows = rows.filter(i => i.status === 'OPEN');
+  } else if (filter === 'mainboard') {
+    rows = rows.filter(i => i.kind === 'main');
+  } else if (filter === 'sme') {
+    rows = rows.filter(i => i.kind === 'sme' || i.platform === 'SME');
+  }
+
+  // Apply sort
+  const sort = state.ipoSort || 'quality';
+  switch (sort) {
+    case 'quality':
+      rows.sort((a, b) => calculateIPOQualityScore(b, null) - calculateIPOQualityScore(a, null));
+      break;
+    case 'gmp':
+      rows.sort((a, b) => {
+        const gmpA = parseFloat((a.gmp || '0').replace(/[^0-9.-]/g, '')) || 0;
+        const gmpB = parseFloat((b.gmp || '0').replace(/[^0-9.-]/g, '')) || 0;
+        return gmpB - gmpA;
+      });
+      break;
+    case 'subscription':
+      rows.sort((a, b) => {
+        const subA = parseFloat(a.subscription) || 0;
+        const subB = parseFloat(b.subscription) || 0;
+        return subB - subA;
+      });
+      break;
+    case 'closeDate':
+      rows.sort((a, b) => (a.closeDate || '').localeCompare(b.closeDate || ''));
+      break;
+    case 'listing':
+      rows.sort((a, b) => (a.listingDate || a.listing || '').localeCompare(b.listingDate || b.listing || ''));
+      break;
+    default:
+      rows.sort((a, b) => calculateIPOQualityScore(b, null) - calculateIPOQualityScore(a, null));
+  }
 
   if (!rows.length) {
     listEl.innerHTML = '<p class="text-[11px] text-keyboard-silver/50 py-4 text-center">' +
@@ -5046,31 +5244,32 @@ function renderIpoBoard() {
 
 function ipoRow(item) {
   const slug = item.slug;
-  const open = !!(state.ipoOpen && state.ipoOpen[slug]);
-  const det = state.ipoDetail && state.ipoDetail[slug];
-  const loading = open && det && det.loading;
-  const err = open && det && det.error;
   const label = item.platform || (item.kind === 'main' ? 'Mainboard' : 'SME');
   const days = item.status === 'OPEN' && item.closeDate ? ipoDaysLeft(item.closeDate) : null;
   const meta = [item.dateWindow, item.size, item.priceBand].filter(Boolean).join(' · ');
-  const caret = open ? '▲' : '▼';
-  return '<div class="rounded-xl border border-keyboard-grey/20 bg-keyboard-black/40 overflow-hidden">' +
-    '<button onclick="toggleIpoDetail(' + "'" + slug + "'" + ')" class="w-full text-left p-3 hover:bg-keyboard-black/60 transition-colors">' +
-      '<div class="flex items-center justify-between gap-2">' +
-        '<div class="min-w-0">' +
-          '<p class="text-sm font-bold text-keyboard-light truncate">' + escapeHtml(item.name) + ' <span class="text-[9px] font-normal text-keyboard-silver/45">' + label + '</span></p>' +
-          '<p class="text-[10px] text-keyboard-silver/55 truncate">Bidding ' + meta + '</p>' +
-          (days != null && days > 0 ? '<p class="text-[10px] font-semibold text-green-400/80">Closes in ' + days + (days === 1 ? ' day' : ' days') + '</p>' : '') +
+  const qualityScore = calculateIPOQualityScore(item, null);
+  const qualityBadge = getQualityBadge(qualityScore);
+  const sentimentBadge = getListingSentimentBadge(null);
+  
+  return '<div class="rounded-xl border border-keyboard-grey/20 bg-keyboard-black/40 overflow-hidden transition-all hover:border-purple-glow/30">' +
+    '<div class="p-3">' +
+      '<div class="flex items-start justify-between gap-2">' +
+        '<div class="min-w-0 flex-1">' +
+          '<div class="flex items-center gap-2 mb-1 flex-wrap">' +
+            '<p class="text-sm font-bold text-keyboard-light truncate">' + escapeHtml(item.name) + ' <span class="text-[9px] font-normal text-keyboard-silver/45">' + (item.platform || (item.kind === 'main' ? 'Mainboard' : 'SME')) + '</span></p>' +
+            getQualityBadge(calculateIPOQualityScore(item, null)) +
+            getListingSentimentBadge(null) +
+          '</div>' +
+          '<p class="text-[10px] text-keyboard-silver/55 truncate">Bidding ' + [item.dateWindow, item.size, item.priceBand].filter(Boolean).join(' · ') + '</p>' +
+          (item.status === 'OPEN' && item.closeDate && ipoDaysLeft(item.closeDate) > 0 ? '<p class="text-[10px] font-semibold text-green-400/80">Closes in ' + ipoDaysLeft(item.closeDate) + (ipoDaysLeft(item.closeDate) === 1 ? ' day' : ' days') + '</p>' : '') +
         '</div>' +
         '<div class="shrink-0 text-right flex flex-col items-end gap-1">' +
           ipoStatusChip(item) +
-          '<span class="text-[10px] text-keyboard-silver/40">' + caret + ' analysis</span>' +
+          '<span class="text-[10px] text-keyboard-silver/40">▼ details</span>' +
         '</div>' +
       '</div>' +
-    '</button>' +
-    (loading ? '<div class="p-3 border-t border-keyboard-grey/10"><div class="shimmer rounded h-16"></div></div>' : '') +
-    (err ? '<div class="border-t border-keyboard-grey/10 p-3 text-[11px] text-red-300/80">Analysis could not be loaded right now. <a class="text-purple-light" target="_blank" rel="noopener" href="' + escapeHtml(item.url) + '">Open on IPO Watch ↗</a></div>' : '') +
-    (open && det && det.data ? ipoDetailView(item, det.data) : '') +
+    '</div>' +
+    '<button onclick="ipoModal.open(\'' + slug + '\')" class="w-full px-3 py-2 border-t border-keyboard-grey/10 text-left text-[10px] font-bold uppercase tracking-wider text-purple-light/80 border-t border-purple-glow/30 rounded-bl-xl rounded-br-xl hover:bg-purple-glow/10 transition-colors">View Analysis →</button>' +
   '</div>';
 }
 
@@ -5113,23 +5312,8 @@ async function toggleIpoDetail(slug) {
     return;
   }
   state.ipoOpen[slug] = true;
-  if (!state.ipoDetail[slug] || state.ipoDetail[slug].error) {
-    state.ipoDetail[slug] = { loading: true };
-    renderIpoBoard();
-    try {
-      const r = await fetchWithTimeout(API.IPOS + '?detail=' + encodeURIComponent(slug), {}, 20000);
-      if (!r.ok) throw new Error('ipod-' + r.status);
-      const d = await r.json();
-      if (!d || d.ok === false) throw new Error('ipod-body');
-      state.ipoDetail[slug] = { data: d };
-    } catch (e) {
-      console.warn('ipo detail unavailable', e);
-      state.ipoDetail[slug] = { error: true };
-    }
-    renderIpoBoard();
-  } else {
-    renderIpoBoard();
-  }
+  renderIpoBoard();
+  ipoModal.open(slug);
 }
 
 function setSignalTab(mode) {
@@ -5960,20 +6144,3 @@ async function sendAIChat() {
   think.classList.remove('hidden');
   const model = document.getElementById('aiChatModel').value;
   const qs = new URLSearchParams({ mode: 'chat', model, message: q });
-  const FRIENDLY = '⚠️ The AI Market Advisor is still in development and isn\'t responding right now. Hang tight — it\'ll be back online soon!';
-  let reply = FRIENDLY;
-  try {
-    const res = await fetchWithTimeout(API.YAHOO_QUOTE + '?' + qs.toString(), {}, 60000);
-    const d = await res.json();
-    if (d && d.ok && d.reply) reply = d.reply;
-    else reply = FRIENDLY;
-  } catch (e) { reply = FRIENDLY; }
-  think.classList.add('hidden');
-  const row = aiAppend('ai', reply);
-  if (row) { row.setAttribute('data-role','ai'); }
-}
-
-  // Start app
-  document.addEventListener('DOMContentLoaded', init);</script>
-</body>
-</html>
