@@ -1552,6 +1552,49 @@
           <div class="rounded-xl bg-keyboard-black/40 border border-keyboard-grey/20 p-4">
             <h3 class="text-[11px] font-bold uppercase tracking-wider text-keyboard-silver/50 mb-2">IST Session Clock</h3>
             <div id="sessionClock" class="text-2xl font-bold silver-text">—</div>
+            <div id="marketStatusBadge" class="mt-2">
+              <span id="marketStatusTag" class="inline-block px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-keyboard-grey/20 text-keyboard-silver">…</span>
+              <span id="sessionCountdown" class="block text-[10px] text-keyboard-silver/50 mt-1">…</span>
+            </div>
+            <script>
+            (function () {
+              var ms = document.getElementById('marketStatusTag');
+              var cd = document.getElementById('sessionCountdown');
+              if (!ms || !cd) return;
+              function ist() {
+                var d = new Date();
+                return new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+              }
+              function pad(n) { return (n < 10 ? '0' : '') + n; }
+              function tick() {
+                var now = ist();
+                var day = now.getDay();
+                var hm = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+                var pre = 9 * 60;
+                var open = 9 * 60 + 15;
+                var close = 15 * 60 + 30;
+                var weekend = day === 0 || day === 6;
+                var status = 'CLOSED';
+                var color = 'bg-keyboard-grey/20 text-keyboard-silver';
+                var minsTo = 0;
+                var label = 'Next open 09:15 IST (Monday)';
+                if (!weekend) {
+                  if (hm >= open && hm < close) { status = 'OPEN'; color = 'bg-green-500/15 text-green-400'; minsTo = close - hm; label = 'Market closes in'; }
+                  else if (hm >= pre && hm < open) { status = 'PRE-MARKET'; color = 'bg-amber-500/15 text-amber-400'; minsTo = open - hm; label = 'Market opens in'; }
+                  else if (hm >= close) { status = 'AFTER-HOURS'; color = 'bg-keyboard-grey/25 text-keyboard-silver/80'; minsTo = (24 * 60 - hm) + open; label = 'Next open in'; }
+                  else { status = 'PRE-MARKET'; color = 'bg-amber-500/15 text-amber-400'; minsTo = open - hm; label = 'Market opens in'; }
+                }
+                if (weekend && minsTo === 0) { minsTo = (24 * 60 - hm); label = 'Next open Mon 09:15'; }
+                var h = Math.floor(minsTo / 60);
+                var m = Math.floor(minsTo % 60);
+                ms.textContent = (status === 'OPEN' ? '● ' : '') + status;
+                ms.className = 'inline-block px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ' + color;
+                cd.textContent = (status === 'OPEN' ? label : label) + ' · ' + h + 'h ' + pad(m) + 'm';
+              }
+              tick();
+              setInterval(tick, 1000);
+            })();
+            </script>
             <p class="text-[10px] text-keyboard-silver/40 mt-2">9:15–15:30 Mon–Fri market hours (IST); clock ticks locally, feed stays gated.</p>
           </div>
         </div>
