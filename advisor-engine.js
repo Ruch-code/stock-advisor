@@ -59,7 +59,7 @@
 
   // ---------- rating ----------
   // Score in [-100, 100] built from transparent rules; every rule is reported back.
-  function rate(candles) {
+  function rate(candles, sentiment) {
     const closes = candles.map((c) => c.close);
     const px = closes[closes.length - 1];
     const s50 = sma(closes, 50), s200 = sma(closes, 200);
@@ -88,9 +88,32 @@
     if (dd < -0.3 && s200 != null && px < s200) add(-10, `${(dd * 100).toFixed(0)}% off 52-week high and still in downtrend`);
     if (vol != null && vol > 0.6) add(-10, `High volatility (${(vol * 100).toFixed(0)}% annualised)`);
 
+    if (sentiment) add(sentiment.pts, `News and results tone: ${sentiment.label} (${sentiment.scored.length} recent headlines)`);
     const score = Math.max(-100, Math.min(100, rules.reduce((s, x) => s + x.pts, 0)));
     const rating = score >= 45 ? 'STRONG BUY' : score >= 15 ? 'BUY' : score > -15 ? 'HOLD' : score > -45 ? 'SELL' : 'STRONG SELL';
     return { rating, score, rules, px, sma50: s50, sma200: s200, rsi: r, macdHist: mh, atr: atr(candles), vol, high52: hi, low52: lo };
+  }
+
+
+  // ---------- news / results sentiment ----------
+  // Simple keyword scoring of headlines. Crude by design: it flags the tone, it does not read the article.
+  const POS = ['beat','beats','surge','surges','jump','jumps','soar','record','profit rises','profit up','growth','upgrade','upgraded','outperform','strong','rally','gains','raises guidance','buyback','dividend','order win','wins order','expands','approval','bullish','higher'];
+  const NEG = ['miss','misses','plunge','plunges','falls','fall','drop','drops','slump','loss','losses','downgrade','downgraded','underperform','weak','probe','fraud','penalty','fine','lawsuit','cuts guidance','layoff','layoffs','default','bearish','lower','decline','declines','resign','raid','sebi notice'];
+  function headlineScore(t) {
+    const x = ' ' + String(t).toLowerCase() + ' ';
+    let s = 0;
+    POS.forEach((w) => { if (x.includes(' ' + w)) s++; });
+    NEG.forEach((w) => { if (x.includes(' ' + w)) s--; });
+    return s;
+  }
+  function newsSentiment(items) {
+    if (!items || !items.length) return null;
+    const scored = items.map((it) => ({ ...it, score: headlineScore(it.title) }));
+    const net = scored.reduce((a, b) => a + Math.sign(b.score), 0);
+    const ratio = net / scored.length;
+    const label = ratio > 0.2 ? 'Positive' : ratio < -0.2 ? 'Negative' : 'Mixed / neutral';
+    const pts = ratio > 0.2 ? 10 : ratio < -0.2 ? -10 : 0;
+    return { label, ratio, pts, scored };
   }
 
   // ---------- position sizing ----------
@@ -174,7 +197,7 @@
     return rows.sort((a, b) => a.total - b.total);
   }
 
-  const api = { sma, rsi, macdHist, atr, annVol, rate, size, brokerage, INDIA, US };
+  const api = { newsSentiment, headlineScore, sma, rsi, macdHist, atr, annVol, rate, size, brokerage, INDIA, US };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.AdvisorEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);

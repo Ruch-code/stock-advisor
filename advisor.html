@@ -31,6 +31,8 @@
   .rules li { margin:4px 0; font-size:14px; } .pos { color:var(--b); } .neg { color:var(--s); } .z { color:var(--mut); }
   .note { font-size:12px; color:var(--mut); line-height:1.5; }
   .msg { padding:10px 12px; border-radius:8px; background:#2a2410; color:#facc15; font-size:13px; display:none; }
+  .news { list-style:none; padding:0; margin:0; } .news li { padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; line-height:1.4; }
+  .news a { color:var(--tx); text-decoration:none; } .news a:hover { color:var(--acc); } .news .meta { color:var(--mut); font-size:11px; margin-top:2px; }
   .scroll { overflow-x:auto; }
   details summary { cursor:pointer; color:var(--mut); font-size:13px; }
 </style>
@@ -52,6 +54,8 @@
       <div><label>Max in one stock (% of capital)</label><input id="maxpos" type="number" value="20" /></div>
       <div><label>Stop distance (x ATR)</label><input id="atrm" type="number" step="0.5" value="2" /></div>
       <div><label>Reward : risk target</label><input id="rr" type="number" step="0.5" value="2" /></div>
+      <div><label>Company name for news (optional)</label><input id="cname" placeholder="Reliance Industries" /></div>
+      <div><label>Include news tone in rating</label><select id="usenews"><option value="1">Yes (+/-10 points)</option><option value="0">No, show only</option></select></div>
       <div><label>Segment (India)</label><select id="seg"><option value="delivery">Delivery (CNC)</option><option value="intraday">Intraday (MIS)</option></select></div>
     </div>
     <details style="margin-top:12px">
@@ -74,6 +78,15 @@
     <ul class="rules" id="rules"></ul>
   </section>
 
+  <section class="card" id="newsCard" style="display:none">
+    <h2>News and company results</h2>
+    <p class="note" id="newsNote"></p>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
+      <div><h3 style="font-size:14px;margin:0 0 8px">Results and earnings</h3><ul class="news" id="resultsList"></ul></div>
+      <div><h3 style="font-size:14px;margin:0 0 8px">Latest news</h3><ul class="news" id="newsList"></ul></div>
+    </div>
+  </section>
+
   <section class="card" id="sizeCard" style="display:none">
     <h2>3. How many to buy</h2>
     <div class="grid" id="sizeKpis"></div>
@@ -87,7 +100,7 @@
     <p class="note">Round trip: buy now, sell at the target. Includes brokerage, STT, exchange transaction charges, SEBI fee, stamp duty, 18% GST and DP charges for India; SEC Section 31 fee and FINRA TAF for the US. Broker rates were checked in Nov 2026 and change often, so confirm on the broker's pricing page before trading. Edit them in <code>advisor-engine.js</code>.</p>
   </section>
 
-  <p class="note">Educational tool based on technical rules only (trend, momentum, RSI, MACD, volatility). It does not look at fundamentals, news or your tax position. Not investment advice; talk to a SEBI-registered investment adviser before acting.</p>
+  <p class="note">Educational tool based on technical rules (trend, momentum, RSI, MACD, volatility) plus a rough headline tone score. It does not read financial statements or consider your tax position. Not investment advice; talk to a SEBI-registered investment adviser before acting.</p>
 </main>
 
 <script src="advisor-engine.js"></script>
@@ -125,11 +138,44 @@ function parseManual() {
   return nums.map((c, i) => { const p = i ? nums[i - 1] : c; return { open: p, high: Math.max(c, p), low: Math.min(c, p), close: c }; });
 }
 
+async function fetchNews(sym, mkt) {
+  const q = $('cname').value.trim() || sym.replace(/\.(NS|BO)$/i, '').replace(/^\^/, '');
+  try {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 15000);
+    const res = await fetch('/functions/proxy?mode=stocknews&q=' + encodeURIComponent(q) + '&locale=' + (mkt === 'IN' ? 'in' : 'us'), { signal: ctl.signal });
+    clearTimeout(t);
+    const d = await res.json();
+    return d && (d.news || d.results) ? { q, news: d.news || [], results: d.results || [] } : { q, news: [], results: [] };
+  } catch (e) { return { q, news: [], results: [] }; }
+}
+
+const esc = (x) => String(x || '').replace(/[&<>"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+function newsItems(list) {
+  if (!list.length) return '<li class="z">Nothing found.</li>';
+  return list.map((it) => {
+    const sc = E.headlineScore(it.title), cls = sc > 0 ? 'pos' : sc < 0 ? 'neg' : 'z', tag = sc > 0 ? 'positive' : sc < 0 ? 'negative' : 'neutral';
+    const href = /^https?:\/\//.test(it.link || '') ? esc(it.link) : '#';
+    const when = it.pubDate ? new Date(it.pubDate).toLocaleDateString() : '';
+    return `<li><a href="${href}" target="_blank" rel="noopener">${esc(it.title)}</a><div class="meta"><span class="${cls}">${tag}</span>${it.source ? ' · ' + esc(it.source) : ''}${when ? ' · ' + when : ''}</div></li>`;
+  }).join('');
+}
+
+function renderNews(N, sent) {
+  $('newsCard').style.display = 'block';
+  $('resultsList').innerHTML = newsItems(N.results);
+  $('newsList').innerHTML = newsItems(N.news);
+  $('newsNote').textContent = sent
+    ? `Headlines for "${N.q}". Overall tone: ${sent.label}. Tone is scored from headline keywords only, so open the results stories to check the actual numbers (revenue, profit, guidance).`
+    : `No headlines found for "${N.q}". Try the full company name in the box above.`;
+}
+
 function kpi(k, v) { return `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div></div>`; }
 
-function render(sym, candles, fromManual) {
+function render(sym, candles, fromManual, N) {
   const mkt = marketOf(sym), cur = mkt === 'IN' ? '₹' : '$';
-  const R = E.rate(candles);
+  const sent = E.newsSentiment([...N.results, ...N.news]);
+  renderNews(N, sent);
+  const R = E.rate(candles, $('usenews').value === '1' ? sent : null);
 
   $('out').style.display = $('sizeCard').style.display = $('brokCard').style.display = 'block';
   $('badge').textContent = R.rating; $('badge').style.background = COLORS[R.rating];
@@ -175,13 +221,16 @@ $('go').addEventListener('click', async () => {
   if (!sym) return showMsg('Enter a symbol.');
   showMsg(''); $('go').disabled = true; $('go').textContent = 'Fetching...';
   let candles = null, manual = false;
+  const newsP = fetchNews(sym, marketOf(sym));
   if ($('manual').value.trim()) { candles = parseManual(); manual = true; }
   else candles = await fetchCandles(sym);
+  const N = await newsP;
   $('go').disabled = false; $('go').textContent = 'Analyse';
   if (!candles || candles.length < 30) {
+    renderNews(N, E.newsSentiment([...N.results, ...N.news]));
     return showMsg('Could not get at least 30 days of prices for ' + sym + '. Indian symbols need a paid data key on the free tier; paste daily closes in the box above instead.');
   }
-  render(sym, candles, manual);
+  render(sym, candles, manual, N);
 });
 </script>
 </body>

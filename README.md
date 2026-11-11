@@ -21,6 +21,8 @@ Enter a symbol, your capital and risk limits, and the page gives:
    - India: Zerodha, Dhan, Groww, Angel One, Upstox, 5paisa, Kotak Neo, ICICI Direct, HDFC Securities, with STT, NSE transaction charge, SEBI fee, stamp duty, GST and DP charges (delivery or intraday).
    - US: Robinhood, Schwab, Fidelity, Webull, IBKR Lite, IBKR Pro, with SEC Section 31 fee ($20.60/million from 4 Apr 2026) and FINRA TAF.
 
+4. **News and company results**: latest headlines and quarterly results/earnings stories for the company (Google News RSS through the `stocknews` mode of `proxy.js`, no API key). Each headline is tagged positive/negative/neutral, and the overall tone can add or subtract up to 10 points from the rating (toggle on the page).
+
 Broker rates live in `advisor-engine.js` (checked Nov 2026); update them there when brokers change pricing. If live Indian data is unavailable on free API keys, paste daily closes into the page instead.
 
 ## Tech Stack
