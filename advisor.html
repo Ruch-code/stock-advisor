@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stock Advisor: Rating, Quantity and Brokerage</title>
+<style>
+  :root { color-scheme: dark; --bg:#121214; --card:#1c1c20; --line:#2c2c33; --tx:#e7e7ea; --mut:#9a9aa5; --acc:#a78bfa;
+          --sb:#16a34a; --b:#4ade80; --h:#facc15; --s:#f87171; --ss:#dc2626; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--tx); }
+  header { padding:20px 24px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+  header a { color:var(--acc); text-decoration:none; font-size:14px; }
+  h1 { margin:0; font-size:20px; } h2 { font-size:15px; margin:0 0 12px; color:var(--acc); text-transform:uppercase; letter-spacing:.05em; }
+  main { max-width:1150px; margin:0 auto; padding:20px; display:grid; gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; }
+  label { display:block; font-size:12px; color:var(--mut); margin-bottom:4px; }
+  input, select, textarea { width:100%; padding:9px 10px; background:#0f0f12; color:var(--tx); border:1px solid var(--line); border-radius:8px; font-size:14px; }
+  textarea { min-height:70px; font-family:ui-monospace,monospace; font-size:12px; }
+  button { padding:10px 18px; background:var(--acc); color:#111; border:0; border-radius:8px; font-weight:700; cursor:pointer; font-size:14px; }
+  button:disabled { opacity:.5; cursor:wait; }
+  .row { display:flex; gap:12px; align-items:end; flex-wrap:wrap; }
+  .badge { display:inline-block; padding:10px 18px; border-radius:10px; font-size:24px; font-weight:800; color:#111; }
+  .kpi { background:#0f0f12; border:1px solid var(--line); border-radius:10px; padding:12px; }
+  .kpi .v { font-size:20px; font-weight:700; margin-top:4px; } .kpi .k { font-size:12px; color:var(--mut); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { padding:8px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap; }
+  th:first-child, td:first-child { text-align:left; } th { color:var(--mut); font-weight:600; }
+  tr.best td { background:rgba(74,222,128,.08); }
+  .rules li { margin:4px 0; font-size:14px; } .pos { color:var(--b); } .neg { color:var(--s); } .z { color:var(--mut); }
+  .note { font-size:12px; color:var(--mut); line-height:1.5; }
+  .msg { padding:10px 12px; border-radius:8px; background:#2a2410; color:#facc15; font-size:13px; display:none; }
+  .scroll { overflow-x:auto; }
+  details summary { cursor:pointer; color:var(--mut); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Stock Advisor: Buy / Sell / Hold, Quantity and Brokerage</h1>
+  <a href="app.html">Back to dashboard</a>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1. Stock and your money</h2>
+    <div class="grid">
+      <div><label>Symbol (RELIANCE.NS, TCS.NS, AAPL, NVDA)</label><input id="sym" value="RELIANCE.NS" /></div>
+      <div><label>Market</label><select id="mkt"><option value="auto">Auto (from symbol)</option><option value="IN">India (NSE/BSE, ₹)</option><option value="US">US ($)</option></select></div>
+      <div><label>Capital available</label><input id="cap" type="number" value="500000" /></div>
+      <div><label>Max risk per trade (% of capital)</label><input id="risk" type="number" step="0.1" value="1" /></div>
+      <div><label>Max in one stock (% of capital)</label><input id="maxpos" type="number" value="20" /></div>
+      <div><label>Stop distance (x ATR)</label><input id="atrm" type="number" step="0.5" value="2" /></div>
+      <div><label>Reward : risk target</label><input id="rr" type="number" step="0.5" value="2" /></div>
+      <div><label>Segment (India)</label><select id="seg"><option value="delivery">Delivery (CNC)</option><option value="intraday">Intraday (MIS)</option></select></div>
+    </div>
+    <details style="margin-top:12px">
+      <summary>Live data blocked? Paste daily closing prices instead (oldest first, comma or newline separated)</summary>
+      <textarea id="manual" placeholder="2810, 2822.5, 2799, ..."></textarea>
+    </details>
+    <div class="row" style="margin-top:14px">
+      <button id="go">Analyse</button>
+      <div class="msg" id="msg"></div>
+    </div>
+  </section>
+
+  <section class="card" id="out" style="display:none">
+    <h2>2. Rating</h2>
+    <div class="row" style="align-items:center; gap:20px">
+      <span class="badge" id="badge">HOLD</span>
+      <div><div style="font-size:28px;font-weight:700" id="px"></div><div class="note" id="scoreTxt"></div></div>
+    </div>
+    <div class="grid" style="margin-top:14px" id="ind"></div>
+    <ul class="rules" id="rules"></ul>
+  </section>
+
+  <section class="card" id="sizeCard" style="display:none">
+    <h2>3. How many to buy</h2>
+    <div class="grid" id="sizeKpis"></div>
+    <p class="note" id="sizeNote"></p>
+  </section>
+
+  <section class="card" id="brokCard" style="display:none">
+    <h2>4. Brokerage and charges on every platform</h2>
+    <p class="note" id="brokNote"></p>
+    <div class="scroll"><table id="brok"></table></div>
+    <p class="note">Round trip: buy now, sell at the target. Includes brokerage, STT, exchange transaction charges, SEBI fee, stamp duty, 18% GST and DP charges for India; SEC Section 31 fee and FINRA TAF for the US. Broker rates were checked in Nov 2026 and change often, so confirm on the broker's pricing page before trading. Edit them in <code>advisor-engine.js</code>.</p>
+  </section>
+
+  <p class="note">Educational tool based on technical rules only (trend, momentum, RSI, MACD, volatility). It does not look at fundamentals, news or your tax position. Not investment advice; talk to a SEBI-registered investment adviser before acting.</p>
+</main>
+
+<script src="advisor-engine.js"></script>
+<script>
+const E = window.AdvisorEngine;
+const $ = (id) => document.getElementById(id);
+const COLORS = { 'STRONG BUY':'var(--sb)', 'BUY':'var(--b)', 'HOLD':'var(--h)', 'SELL':'var(--s)', 'STRONG SELL':'var(--ss)' };
+
+function marketOf(sym) {
+  const m = $('mkt').value;
+  if (m !== 'auto') return m;
+  return /\.(NS|BO)$/i.test(sym) || /^\^(NSEI|BSESN)/.test(sym) ? 'IN' : 'US';
+}
+const fmt = (v, cur, d = 2) => v == null || isNaN(v) ? 'n/a' : cur + Number(v).toLocaleString(cur === '₹' ? 'en-IN' : 'en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+function showMsg(t) { const m = $('msg'); m.textContent = t; m.style.display = t ? 'block' : 'none'; }
+
+async function fetchCandles(sym) {
+  const url = '/functions/proxy?symbol=' + encodeURIComponent(sym) + '&interval=1d&range=1y';
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const res = await fetch(url, { signal: ctl.signal });
+    const d = await res.json();
+    const r = d && d.chart && d.chart.result && d.chart.result[0];
+    if (!r || !r.timestamp) return null;
+    const q = r.indicators.quote[0];
+    return r.timestamp.map((ts, i) => ({ time: ts, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i] }))
+      .filter((c) => c.close > 0 && c.high > 0 && c.low > 0);
+  } catch (e) { return null; } finally { clearTimeout(t); }
+}
+
+function parseManual() {
+  const nums = $('manual').value.split(/[\s,]+/).map(Number).filter((x) => x > 0);
+  // No highs/lows when pasting closes, so approximate the range from close-to-close moves.
+  return nums.map((c, i) => { const p = i ? nums[i - 1] : c; return { open: p, high: Math.max(c, p), low: Math.min(c, p), close: c }; });
+}
+
+function kpi(k, v) { return `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div></div>`; }
+
+function render(sym, candles, fromManual) {
+  const mkt = marketOf(sym), cur = mkt === 'IN' ? '₹' : '$';
+  const R = E.rate(candles);
+
+  $('out').style.display = $('sizeCard').style.display = $('brokCard').style.display = 'block';
+  $('badge').textContent = R.rating; $('badge').style.background = COLORS[R.rating];
+  $('px').textContent = sym.toUpperCase() + '  ' + fmt(R.px, cur);
+  $('scoreTxt').textContent = `Score ${R.score} on a -100 to +100 scale, from ${candles.length} trading days${fromManual ? ' (pasted prices)' : ''}`;
+  $('ind').innerHTML = [
+    kpi('50-day avg', fmt(R.sma50, cur)), kpi('200-day avg', fmt(R.sma200, cur)),
+    kpi('RSI (14)', R.rsi == null ? 'n/a' : R.rsi.toFixed(1)), kpi('ATR (14)', fmt(R.atr, cur)),
+    kpi('52-week range', fmt(R.low52, cur, 0) + ' to ' + fmt(R.high52, cur, 0)),
+    kpi('Volatility (yr)', R.vol == null ? 'n/a' : (R.vol * 100).toFixed(0) + '%')
+  ].join('');
+  $('rules').innerHTML = R.rules.map((r) => `<li><span class="${r.pts > 0 ? 'pos' : r.pts < 0 ? 'neg' : 'z'}">${r.pts > 0 ? '+' : ''}${r.pts}</span> ${r.label}</li>`).join('');
+
+  const S = E.size({ price: R.px, atrVal: R.atr, capital: +$('cap').value, riskPct: +$('risk').value,
+    maxPosPct: +$('maxpos').value, atrMult: +$('atrm').value, rewardR: +$('rr').value, rating: R.rating });
+  $('sizeKpis').innerHTML = [
+    kpi('Quantity to buy', S.qty.toLocaleString()), kpi('Amount to invest', fmt(S.invest, cur)),
+    kpi('Stop loss', fmt(S.stop, cur)), kpi('Target', fmt(S.target, cur)),
+    kpi('Max loss if stopped', fmt(S.maxLoss, cur)), kpi('Gain at target', fmt(S.potentialGain, cur))
+  ].join('');
+  $('sizeNote').textContent = S.qty === 0
+    ? (R.rating.includes('SELL') ? 'Rating is ' + R.rating + ': no new buy. If you already hold it, consider exiting or tightening your stop to ' + fmt(S.stop, cur) + '.'
+       : 'Capital too small for one share within your risk limits.')
+    : `Sized so a stop-out costs at most ${$('risk').value}% of capital (${fmt(S.riskBudget, cur)}), capped at ${$('maxpos').value}% of capital in this stock. Limit hit: ${S.binding}. Scaled to ${Math.round(S.scale * 100)}% because the rating is ${R.rating}.`;
+
+  const qty = S.qty || Math.max(1, S.byCap); // still show costs when the advice is not to buy
+  const rows = E.brokerage({ market: mkt, qty, buyPrice: R.px, sellPrice: S.target, segment: $('seg').value });
+  $('brokNote').textContent = `${qty.toLocaleString()} shares, buy at ${fmt(R.px, cur)}, sell at ${fmt(S.target, cur)}${mkt === 'IN' ? ', ' + $('seg').value : ''}.` + (S.qty ? '' : ' (Illustrative quantity, since the advice is not to buy.)');
+  const head = mkt === 'IN'
+    ? ['Platform','Brokerage','STT','Exch. txn','SEBI','Stamp','GST','DP','Total charges','Breakeven / share','Net P&L at target','AMC']
+    : ['Platform','Commission','SEC fee','FINRA TAF','Total charges','Breakeven / share','Net P&L at target'];
+  const body = rows.map((r, i) => {
+    const cells = mkt === 'IN'
+      ? [r.broker, r.brokerage, r.stt, r.txn, r.sebi, r.stamp, r.gst, r.dp, r.total, r.breakeven, r.netPnl, r.amc]
+      : [r.broker, r.brokerage, r.sec, r.taf, r.total, r.breakeven, r.netPnl];
+    return `<tr class="${i === 0 ? 'best' : ''}">` + cells.map((c, j) => `<td>${typeof c === 'number' ? fmt(c, cur) : c}${i === 0 && j === 0 ? ' (cheapest)' : ''}</td>`).join('') + '</tr>';
+  }).join('');
+  $('brok').innerHTML = '<thead><tr>' + head.map((h) => `<th>${h}</th>`).join('') + '</tr></thead><tbody>' + body + '</tbody>';
+}
+
+$('go').addEventListener('click', async () => {
+  const sym = $('sym').value.trim();
+  if (!sym) return showMsg('Enter a symbol.');
+  showMsg(''); $('go').disabled = true; $('go').textContent = 'Fetching...';
+  let candles = null, manual = false;
+  if ($('manual').value.trim()) { candles = parseManual(); manual = true; }
+  else candles = await fetchCandles(sym);
+  $('go').disabled = false; $('go').textContent = 'Analyse';
+  if (!candles || candles.length < 30) {
+    return showMsg('Could not get at least 30 days of prices for ' + sym + '. Indian symbols need a paid data key on the free tier; paste daily closes in the box above instead.');
+  }
+  render(sym, candles, manual);
+});
+</script>
+</body>
+</html>

@@ -11,6 +11,18 @@ A comprehensive stock and mutual fund advisor with live market data, candlestick
 - **Broker Charges** - Comparison across US and Indian brokers
 - **Trading Signals** - Entry, exit, stop loss, and quantity suggestions
 
+## Buy / Sell / Hold Advisor (`advisor.html`)
+
+Enter a symbol, your capital and risk limits, and the page gives:
+
+1. **Rating**: Strong Buy / Buy / Hold / Sell / Strong Sell from transparent rules (200/50-day trend, golden/death cross, 3-month momentum, RSI, MACD, drawdown, volatility). Every rule and its points are shown.
+2. **Quantity to buy**: risk-based sizing. A stop is set at N x ATR below price; quantity is the lower of (capital x risk% / stop distance) and (capital x max-position% / price), scaled down for weaker ratings. Sell ratings give 0.
+3. **Brokerage on every platform**: full round-trip cost at that quantity, sorted cheapest first.
+   - India: Zerodha, Dhan, Groww, Angel One, Upstox, 5paisa, Kotak Neo, ICICI Direct, HDFC Securities, with STT, NSE transaction charge, SEBI fee, stamp duty, GST and DP charges (delivery or intraday).
+   - US: Robinhood, Schwab, Fidelity, Webull, IBKR Lite, IBKR Pro, with SEC Section 31 fee ($20.60/million from 4 Apr 2026) and FINRA TAF.
+
+Broker rates live in `advisor-engine.js` (checked Nov 2026); update them there when brokers change pricing. If live Indian data is unavailable on free API keys, paste daily closes into the page instead.
+
 ## Tech Stack
 
 - Pure HTML/CSS/JavaScript (no framework)
