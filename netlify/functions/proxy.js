@@ -751,6 +751,8 @@ export default async (event, context) => {
   if (!/^[a-zA-Z0-9]+$/.test(range)) range = '5d';
 
   if (params.mode === 'news') return await handleNews(params.topic || 'markets');
+  // Per-stock news + results headlines for advisor.html.
+  if (params.mode === 'stocknews') return await handleStockNews(String(params.q || '').slice(0, 60), params.locale === 'in' ? 'in' : 'us');
 
   // AI Market Advisor — proxies to free-tier OpenAI-compatible providers so the
   // browser never sees a key. message is the user's text; model is optional and
@@ -961,6 +963,26 @@ async function fetchAndParseRSS(url) {
     if (items.length >= 10) break;
   }
   return items;
+}
+
+
+// Company news and results headlines via Google News RSS (no key needed).
+async function handleStockNews(q, locale) {
+  q = q.replace(/[^\w .&-]/g, '').trim();
+  if (!q) return corsResponse(JSON.stringify({ error: 'q required' }), 400);
+  const grab = async (query, max) => {
+    const out = [];
+    try {
+      const got = await fetchAndParseRSS(buildGoogleNewsUrl(query, locale));
+      for (const it of got) { if (!out.some((y) => y.title === it.title)) out.push(it); if (out.length >= max) break; }
+    } catch (e) { /* source down */ }
+    return out;
+  };
+  const [news, results] = await Promise.all([
+    grab(q + ' stock', 10),
+    grab(q + ' quarterly results earnings profit revenue', 8)
+  ]);
+  return corsResponse(JSON.stringify({ q, news, results }), 200, { 'Cache-Control': 'public, max-age=300' });
 }
 
 async function handleNews(topic) {
